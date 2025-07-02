@@ -64,7 +64,7 @@ app.get('/health', (req, res) => {
   res.json(poolManager.getHealthStatus());
 });
 
-// Cleanup Endpoint (optional)
+// Cleanup Endpoint (optional) [UNTESTED]
 app.post('/admin/cleanup', (req, res) => {
   const cleaned = poolManager.cleanupInactivePools();
   res.json({ cleanedPools: cleaned });
@@ -92,49 +92,6 @@ app.get('/admin/bans', (req, res) => {
 app.delete('/admin/bans/:fingerprint', (req, res) => {
   const success = poolManager.unbanClient(req.params.fingerprint);
   res.json({ success });
-});
-
-// Kick all connections in pool
-app.post('/admin/pools/:poolId/kick-all', (req, res) => {
-  try {
-    const { poolId } = req.params;
-    const kickedCount = poolManager.kickAllInPool(poolId);
-    
-    res.json({
-      success: kickedCount > 0,
-      kickedCount,
-      message: kickedCount > 0
-        ? `Kicked ${kickedCount} connections from pool ${poolId}`
-        : `Pool not found or empty`
-    });
-  } catch (error) {
-    handleError(res, error);
-  }
-});
-
-app.delete('/admin/pools/:poolId', (req, res) => {
-  try {
-    const { poolId } = req.params;
-    const { success, disconnected } = poolManager.removePool(poolId);
-
-    if (success) {
-      res.json({
-        status: 'success',
-        message: `Pool '${poolId}' removed`,
-        disconnectedClients: disconnected,
-        remainingPools: poolManager.getPoolCount(), // Now using the correct method
-        activePools: poolManager.getPoolIds()      // Optional: list remaining pools
-      });
-    } else {
-      res.status(404).json({
-        status: 'error',
-        message: `Pool '${poolId}' not found`,
-        activePools: poolManager.getPoolIds()     // Helpful for debugging
-      });
-    }
-  } catch (error) {
-    handleError(res, error);
-  }
 });
 
 httpServer.listen(PORT, () => {

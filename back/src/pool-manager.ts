@@ -32,7 +32,7 @@ export class PoolManager {
   private globalTimerValue = 0;
   private isRunning = false;
   private timerInterval?: NodeJS.Timeout;
-  private bannedClients = new Map<string, BannedClient>();
+  private bannedClients = new Map<string, BanRecord>();
   private clientIdentifiers = new Map<string, string>(); // clientId -> fingerprint
 
   public getPoolCount(): number {
@@ -271,59 +271,6 @@ export class PoolManager {
     }
     
     return true;
-  }
-
-  /**
-   * Бесполезно т к клиент сразу переподключается.
-   * Нужно докрутить, но не отправляя в бан всех из пула.
-   * */
-  public kickAllInPool(poolId: string): number {
-    const pool = this.pools.get(poolId);
-    if (!pool) return 0;
-
-    let kickedCount = 0;
-    pool.clients.forEach(conn => {
-      try {
-        conn.response.write('event: admin-kick\ndata: {"reason":"Pool reset by admin"}\n\n');
-        conn.response.end();
-        kickedCount++;
-      } catch (err) {
-        console.error('Error kicking connection:', err);
-      }
-    });
-
-    pool.clients.clear();
-    return kickedCount;
-  }
-
-  public removePool(poolId: string): { success: boolean; disconnected: number } {
-    const pool = this.pools.get(poolId);
-    if (!pool) {
-      return { success: false, disconnected: 0 };
-    }
-
-    let disconnectedCount = 0;
-
-    // Disconnect all clients
-    pool.clients.forEach(connection => {
-      try {
-        connection.response.write('event: pool-removed\n');
-        connection.response.write('data: {"reason":"Pool was deleted by admin"}\n\n');
-        connection.response.end();
-        disconnectedCount++;
-      } catch (err) {
-        console.error(`Error disconnecting ${connection.id}:`, err);
-      }
-    });
-
-    this.pools.delete(poolId);
-
-    // Stop timer if no pools left
-    if (this.pools.size === 0) {
-      this.stopGlobalTimer();
-    }
-
-    return { success: true, disconnected: disconnectedCount };
   }
 
   private ensurePoolExists(poolId: string, config?: string): void {
