@@ -12,14 +12,28 @@ const app = express();
 const httpServer = createServer(app);
 
 
-app.use('/sse/:poolId', (req, res, next) => {
+app.use('/sse/:poolId/:connId', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   next();
 });
 
 // SSE Endpoint
-app.get('/sse/:poolId', (req, res) => {
+app.get('/sse/:poolId/:connId', (req, res) => {
+  // Verify if client is banned
+  const verification = poolManager.verifyConnection(req);
+  if (!verification.allowed) {
+    res.writeHead(403, {
+      'Content-Type': 'application/json',
+      'Connection': 'close'
+    });
+    res.end(JSON.stringify({
+      error: 'banned',
+      reason: verification.reason
+    }));
+    return;
+  }
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -57,20 +71,27 @@ app.post('/admin/cleanup', (req, res) => {
 });
 
 // Kick specific connection
-app.post('/admin/pools/:poolId/kick/:connectionId', (req, res) => {
-  try {
-    const { poolId, connectionId } = req.params;
-    const success = poolManager.kickConnection(poolId, connectionId);
-    
-    res.json({
-      success,
-      message: success 
-        ? `Connection ${connectionId} kicked from pool ${poolId}`
-        : `Connection or pool not found`
-    });
-  } catch (error) {
-    handleError(res, error);
-  }
+app.post('/admin/kick', express.json(), (req, res) => {
+  const { poolId, connectionId, ban, reason, banHours } = req.body;
+  
+  const result = poolManager.kickConnection(poolId, connectionId, {
+    banClient: ban,
+    reason,
+    banDurationMs: banHours ? banHours * 60 * 60 * 1000 : undefined
+  });
+
+  res.json(result);
+});
+
+// List banned clients
+app.get('/admin/bans', (req, res) => {
+  res.json(Array.from(poolManager.getBannedClients()));
+});
+
+// Unban client
+app.delete('/admin/bans/:fingerprint', (req, res) => {
+  const success = poolManager.unbanClient(req.params.fingerprint);
+  res.json({ success });
 });
 
 // Kick all connections in pool

@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { createHash } from 'crypto';
+
 
 interface Connection {
   id: string;
@@ -7,6 +9,7 @@ interface Connection {
   ip: string;
   userAgent?: string;
   connectedAt: Date;
+  request: Request;
 }
 
 interface Pool {
@@ -17,11 +20,20 @@ interface Pool {
   lastActivity: Date;
 }
 
+interface BanRecord {
+  fingerprint: string;
+  reason: string;
+  bannedAt: Date;
+  expiresAt?: Date;
+}
+
 export class PoolManager {
   private pools = new Map<string, Pool>();
   private globalTimerValue = 0;
   private isRunning = false;
   private timerInterval?: NodeJS.Timeout;
+  private bannedClients = new Map<string, BannedClient>();
+  private clientIdentifiers = new Map<string, string>(); // clientId -> fingerprint
 
   public getPoolCount(): number {
     return this.pools.size;
@@ -32,6 +44,24 @@ export class PoolManager {
   }
 
   public addConnection(poolId: string, req: Request, res: Response): void {
+
+    const fingerprint = this.getClientFingerprint(req);
+    
+    if (this.isClientBanned(fingerprint)) {
+      res.writeHead(403, {
+        'Content-Type': 'application/json',
+        'Connection': 'close'
+      });
+      res.end(JSON.stringify({
+        error: "Banned",
+        reason: this.bannedClients.get(fingerprint)?.reason
+      }));
+      
+    }
+
+    const clientId = uuidv4();
+    this.clientIdentifiers.set(clientId, fingerprint);
+
     this.ensurePoolExists(poolId, req.query.config as string | undefined);
     const pool = this.pools.get(poolId)!;
 
@@ -40,7 +70,8 @@ export class PoolManager {
       response: res,
       ip: this.getClientIp(req),
       userAgent: req.headers['user-agent'],
-      connectedAt: new Date()
+      connectedAt: new Date(),
+      request: req
     };
 
     pool.clients.add(connection);
@@ -97,26 +128,155 @@ export class PoolManager {
     return cleanedCount;
   }
 
-  public kickConnection(poolId: string, connectionId: string): boolean {
+  public kickConnection(
+    poolId: string, 
+    connectionId: string, 
+    options: {
+      banClient?: boolean;
+      banDurationMs?: number;
+      reason?: string;
+    } = {}
+  ): { success: boolean; banned: boolean; message: string } {
     const pool = this.pools.get(poolId);
-    if (!pool) return false;
+    if (!pool) {
+      return {
+        success: false,
+        banned: false,
+        message: `Pool ${poolId} not found`
+      };
+    }
 
+    // Find connection
+    let connection: Connection | undefined;
     for (const conn of pool.clients) {
       if (conn.id === connectionId) {
-        try {
-          // Send a termination message before closing
-          conn.response.write('event: admin-kick\ndata: {"reason":"Connection terminated by admin"}\n\n');
-          conn.response.end();
-        } catch (err) {
-          console.error('Error kicking connection:', err);
-        }
-        pool.clients.delete(conn);
-        return true;
+        connection = conn;
+        break;
       }
     }
-    return false;
+
+    if (!connection) {
+      return {
+        success: false,
+        banned: false,
+        message: `Connection ${connectionId} not found in pool ${poolId}`
+      };
+    }
+
+    // Ban logic
+    let banned = false;
+    if (options.banClient) {
+      const fingerprint = this.generateClientFingerprint(connection.request);
+      this.bannedClients.set(fingerprint, {
+        fingerprint,
+        reason: options.reason || 'Administrative ban',
+        bannedAt: new Date(),
+        expiresAt: options.banDurationMs 
+          ? new Date(Date.now() + options.banDurationMs)
+          : undefined
+      });
+      banned = true;
+    }
+
+    // Send kick message
+    try {
+      const kickMessage = JSON.stringify({
+        event: 'admin-kick',
+        banned: options.banClient,
+        reason: options.reason || 'Connection terminated by admin',
+        reconnectAllowed: !options.banClient,
+        ...(options.banClient && options.banDurationMs 
+          ? { banDurationMs: options.banDurationMs } 
+          : {})
+      });
+
+      connection.response.write(`event: admin-kick\n`);
+      connection.response.write(`data: ${kickMessage}\n\n`);
+      connection.response.end();
+    } catch (err) {
+      console.error(`Error kicking connection ${connectionId}:`, err);
+    }
+
+    // Remove connection
+    pool.clients.delete(connection);
+
+    return {
+      success: true,
+      banned,
+      message: `Connection ${connectionId} kicked from pool ${poolId}` +
+        (banned ? ' (BANNED)' : '')
+    };
   }
 
+  // Add this method to check connections before accepting them
+  public verifyConnection(req: Request): { allowed: boolean; reason?: string } {
+    const fingerprint = this.generateClientFingerprint(req);
+    if (this.isClientBanned(fingerprint)) {
+      const ban = this.bannedClients.get(fingerprint)!;
+      return {
+        allowed: false,
+        reason: ban.reason + (ban.expiresAt 
+          ? ` until ${ban.expiresAt.toISOString()}`
+          : ' (permanent)')
+      };
+    }
+    return { allowed: true };
+  }
+
+  private generateClientFingerprint(req: Request): string {
+    const components = [
+      req.headers['user-agent'],
+      req.headers['accept-language'],
+      req.headers['sec-ch-ua'],
+      req.ip,
+      req.params.poolId,
+      req.params.connId,
+      req.headers['cookie'] // If using session cookies
+    ].filter(Boolean).join('|');
+    
+    return createHash('sha256').update(components).digest('hex');
+  }
+
+  private banClient(
+    fingerprint: string, 
+    options: {
+      reason: string;
+      expiresAt?: Date;
+    }
+  ): void {
+    this.bannedClients.set(fingerprint, {
+      fingerprint,
+      reason: options.reason,
+      bannedAt: new Date(),
+      expiresAt: options.expiresAt
+    });
+
+    // Schedule automatic unban if duration was specified
+    if (options.expiresAt) {
+      const banDuration = options.expiresAt.getTime() - Date.now();
+      setTimeout(() => {
+        this.bannedClients.delete(fingerprint);
+      }, banDuration);
+    }
+  }
+
+  private isClientBanned(fingerprint: string): boolean {
+    const banRecord = this.bannedClients.get(fingerprint);
+    if (!banRecord) return false;
+    
+    // Check if ban has expired
+    if (banRecord.expiresAt && banRecord.expiresAt < new Date()) {
+      this.bannedClients.delete(fingerprint);
+      return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * Бесполезно т к клиент сразу переподключается.
+   * Нужно докрутить, но не отправляя в бан всех из пула.
+   * */
   public kickAllInPool(poolId: string): number {
     const pool = this.pools.get(poolId);
     if (!pool) return 0;
@@ -274,6 +434,24 @@ export class PoolManager {
       .toString()
       .split(',')[0]
       .trim();
+  }
+  private getClientFingerprint(req: Request): string {
+    const components = [
+      req.headers['user-agent'],
+      req.headers['accept-language'],
+      req.headers['sec-ch-ua-platform'], // "Android", "Chrome OS", "Chromium OS", "iOS", "Linux", "macOS", "Windows", or "Unknown"
+      req.ip
+    ].join('|');
+    
+    return createHash('sha256').update(components).digest('hex');
+  }
+
+  public getBannedClients(): BanRecord[] {
+    return Array.from(this.bannedClients.values());
+  }
+
+  public unbanClient(fingerprint: string): boolean {
+    return this.bannedClients.delete(fingerprint);
   }
 }
 

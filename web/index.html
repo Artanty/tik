@@ -3,15 +3,41 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
+  <style>
+    form > label {
+      display: block;
+      margin-bottom: 10px;
+    } 
+  </style>
 </head>
 <body>
+  <form id="form1">
+
+    <label>
+      pool
+      <select name="pool">
+        <option value="work">work</option>
+        <option value="play">play</option>
+      </select>
+    </label>
+  
+    <label>
+      connection Id
+      <select name="connection">
+        <option value="1">1</option>
+        <option value="2">2</option>
+      </select>
+    </label>
+    
+    <button type="submit">submit</button>
+  </form>
   <div id="timer"></div>
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
   // Browser JS
-  function connectToPool(poolId) {
-    const eventSource = new EventSource(`http://localhost:3202/sse/${poolId}`);
+  function connectToPool(poolId, connId) {
+    const eventSource = new EventSource(`http://localhost:3202/sse/${poolId}/${connId}`);
     
     eventSource.onmessage = (e) => {
       const data = JSON.parse(e.data);
@@ -27,9 +53,18 @@
   }
 
   // Connect to "work" pool
-  connectToPool('work');
-  </script>
+  
+  
+  form1.addEventListener("submit", (event) => {
+    event.preventDefault();
+    Array.from(event.target).forEach(el => console.log(el))
 
+    const pool = Array.from(event.target).find(el => el.name === 'pool').value
+    const connectionId = Array.from(event.target).find(el => el.name === 'connection').value
+    
+    connectToPool(pool, connectionId);
+  });
+  </script>
 
 </body>
 </html>
