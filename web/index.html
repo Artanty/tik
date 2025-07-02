@@ -15,7 +15,8 @@
     
     eventSource.onmessage = (e) => {
       const data = JSON.parse(e.data);
-      console.log(`Pool ${poolId} time:`, data.value);
+      console.log(data)
+      // console.log(`Pool ${poolId} time:`, data.value);
       
       // Convert to MM:SS
       const mins = Math.floor(data.value / 60);
