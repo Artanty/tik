@@ -1,0 +1,34 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div id="timer"></div>
+
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script>
+  // Browser JS
+  function connectToPool(poolId) {
+    const eventSource = new EventSource(`http://localhost:3202/sse/${poolId}`);
+    
+    eventSource.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      console.log(`Pool ${poolId} time:`, data.value);
+      
+      // Convert to MM:SS
+      const mins = Math.floor(data.value / 60);
+      const secs = data.value % 60;
+      document.getElementById('timer').textContent = 
+        `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+  }
+
+  // Connect to "work" pool
+  connectToPool('work');
+  </script>
+
+
+</body>
+</html>

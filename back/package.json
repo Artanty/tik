@@ -1,0 +1,39 @@
+{
+  "name": "back",
+  "version": "1.0.31",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx tsc",
+    "prePreStart": "node build/index.js",
+    "preStart": "nodemon --config nodemon.json",
+    "start": "concurrently \"nodemon\"",
+    "swagger": "tsoa spec",
+    "db-sync": "ts-node src/dbMigrations/_runDbSync.ts",
+    "tagpush": "cmd /c tagpush.bat"
+  },
+  "keywords": [],
+  "author": "Artyom",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "date-fns": "^3.3.1",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "mysql2": "^3.6.5",
+    "socket.io": "^4.8.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.23",
+    "@types/node": "^20.19.2",
+    "@types/socket.io": "^3.0.1",
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.1.10",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}
