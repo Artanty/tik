@@ -119,10 +119,10 @@ export class SseService {
         // }
         // dd(data)
         if (!isEmptyConfig(data)) {
-          dd('CONFIG IS NOT EMPTY:')
+          // dd('CONFIG IS NOT EMPTY:')
           
           const allRemotes = data.config
-          dd(allRemotes)
+          // dd(allRemotes)
           const getProjectIdAndEventIdFromKey = (key: string): [string, string] => {
             return [key.split('__')[0] + '@web', key.split('__')[1]]
           }
@@ -136,7 +136,7 @@ export class SseService {
               acc[projectId].push(eventObject)
               return acc;
             }, {})
-          dd(eventsByProjectId)
+          // dd(eventsByProjectId)
           
           Object.entries(eventsByProjectId).forEach(([remoteId, remotePayload]) => {
 

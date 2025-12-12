@@ -34,7 +34,7 @@ export class PoolConfigService {
 
 			return acc;
 		}, {})
-		dd(updated)
+		
 		return updated
 	}
 }

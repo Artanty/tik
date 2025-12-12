@@ -5,6 +5,7 @@ import { InitialUserState, UserTick } from './types';
 import { EventStateResItem } from './controllers/outerEventsStateController';
 import { EVENT_TIK_ACTION_PROP } from './core/constants';
 import { PoolConfigService } from './controllers/poolConfigService';
+import { dd } from './utils/dd';
 
 
 interface Connection {
@@ -86,7 +87,9 @@ export class PoolManager {
     req.on('close', () => this.removeConnection(poolId, connection.id));
   }
 
-  public updateConfigItem(poolId: string, itemKeyPrefix: string, configItems: EventStateResItem[]): void {
+  public updateConfigItem(poolId: string, itemKeyPrefix: string, configItems: EventStateResItem[]): any {
+    dd('updateConfigItem')
+    dd(configItems)
     const pool = this.pools.get(poolId);
     if (!pool) throw new Error('Pool not found');
 
@@ -99,6 +102,15 @@ export class PoolManager {
     } else {
       config = JSON.parse(JSON.stringify(pool.config));
     }
+
+    const resultStatistics = {
+      added: [],
+      addedCount: 0,
+      updated: [],
+      updatedCount: 0,
+      deleted: [],
+      deletedCount: 0
+    } as any
     
     configItems.forEach((configItem: EventStateResItem) => {
       const itemKey = `${itemKeyPrefix}__${configItem.id}`;
@@ -108,17 +120,28 @@ export class PoolManager {
         config[itemKey] = {};
         const { id, ...rest } = configItem;
         config[itemKey] = rest;
+
+        resultStatistics['added'].push(itemKey);
+        resultStatistics['addedCount']++;
       } else if (configItem[EVENT_TIK_ACTION_PROP] === 'update') {
         delete configItem[EVENT_TIK_ACTION_PROP];
         if (config[itemKey]) {
           config[itemKey] = {};
           const { id, ...rest } = configItem;
-          config[itemKey] = rest;  
+          config[itemKey] = rest;
+
+          resultStatistics['updated'].push(itemKey);
+          resultStatistics['updatedCount']++;
         } else {
           throw new Error('event not found: ' + itemKey)  
         }
       } else if (configItem[EVENT_TIK_ACTION_PROP] === 'delete') {
+        
         delete config[itemKey]
+
+        resultStatistics['deleted'].push(itemKey);
+        resultStatistics['deletedCount']++;
+        
       } else {
         throw new Error('no tik action in event')
       }
@@ -126,6 +149,8 @@ export class PoolManager {
 
     pool.config = config;
     pool.lastActivity = new Date();
+
+    return resultStatistics;
   }
 
   // public deleteConfigItem(poolId: string, itemKeyPrefix: string, configItems: EventStateResItem[]): void {

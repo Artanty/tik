@@ -125,11 +125,12 @@ export class OuterEventsStateController {
     //   };
     // }
     
-    poolManager.updateConfigItem(req.body.poolId, itemKeyPrefix, req.body.data);  
+    const stat = poolManager.updateConfigItem(req.body.poolId, itemKeyPrefix, req.body.data);  
 
     return {
       success: true,
-      descr: 'poolManager.updateConfigItem successful',
+      desc: 'poolManager.updateConfigItem successful',
+      stat: stat,
       // receiverResponse: response.data,
       // tokenMetadata: {
       //   // id: tokenId,

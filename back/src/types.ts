@@ -25,8 +25,9 @@ export interface InitialUserState {
 }
 
 export interface UserTick {
-  value: number
-  config: string
-  globalTime: number
   poolId: string
+  config: string | any[]
+
+  poolTime: number
+  globalTime: number
 }
