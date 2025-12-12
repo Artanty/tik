@@ -15,3 +15,18 @@ export interface Pool {
   createdAt: Date;
   clients: Set<ClientConnection>;
 }
+
+export interface InitialUserState {
+  type: string
+  value: number
+  config: string
+  poolId: string
+  id: string
+}
+
+export interface UserTick {
+  value: number
+  config: string
+  globalTime: number
+  poolId: string
+}

@@ -7,19 +7,21 @@ import { validateConfig } from './config-validator';
 import { poolManager } from './pool-manager';
 config();
 const PORT = process.env.PORT || 3000;
-
 const app = express();
 const httpServer = createServer(app);
+import cors from 'cors'
+import { OuterEventsStateController } from './controllers/outerEventsStateController';
+import { dd } from './utils/dd';
 
-
-app.use('/sse/:poolId/:connId', (req, res, next) => {
+app.use(cors()) // todo dev only
+app.use('/sse/:poolId', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   next();
 });
 
 // SSE Endpoint
-app.get('/sse/:poolId/:connId', (req, res) => {
+app.get('/sse/:poolId', (req, res) => {
   // Verify if client is banned
   const verification = poolManager.verifyConnection(req);
   if (!verification.allowed) {
@@ -54,6 +56,27 @@ app.post('/pool/:poolId/config', express.json(), (req, res) => {
     const { config } = req.body;
     poolManager.updateConfig(req.params.poolId, config);
     res.json({ success: true });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+app.post('/collectEventsState', express.json(), async (req, res) => {
+  try {
+    const { config } = req.body;
+    const result = await OuterEventsStateController.getEventsState(req);
+    res.json({ data: result });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+// todo add api key check
+app.post('/updateEventsState', express.json(), async (req, res) => {
+  try {
+    const { config } = req.body;
+    const result = await OuterEventsStateController.updateEventsState(req);
+    res.json({ data: result });
   } catch (error) {
     handleError(res, error);
   }
@@ -95,12 +118,12 @@ app.delete('/admin/bans/:fingerprint', (req, res) => {
 });
 
 httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  dd(`Server running on port ${PORT}`);
   // Optional: Add periodic cleanup
   setInterval(() => {
     const cleaned = poolManager.cleanupInactivePools();
     if (cleaned > 0) {
-      console.log(`Cleaned up ${cleaned} inactive pools`);
+      dd(`Cleaned up ${cleaned} inactive pools`);
     }
   }, 5 * 60 * 1000); // Every 5 minutes
 });

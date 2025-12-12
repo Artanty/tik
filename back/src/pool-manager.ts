@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { createHash } from 'crypto';
+import { InitialUserState, UserTick } from './types';
+import { EventStateResItem } from './controllers/outerEventsStateController';
+import { EVENT_TIK_ACTION_PROP } from './core/constants';
+import { PoolConfigService } from './controllers/poolConfigService';
 
 
 interface Connection {
@@ -14,7 +18,7 @@ interface Connection {
 
 interface Pool {
   id: string;
-  config: string;
+  config: string | any;
   offset: number;
   clients: Set<Connection>;
   lastActivity: Date;
@@ -55,8 +59,7 @@ export class PoolManager {
       res.end(JSON.stringify({
         error: "Banned",
         reason: this.bannedClients.get(fingerprint)?.reason
-      }));
-      
+      }));  
     }
 
     const clientId = uuidv4();
@@ -83,7 +86,72 @@ export class PoolManager {
     req.on('close', () => this.removeConnection(poolId, connection.id));
   }
 
-  public updateConfig(poolId: string, newConfig: string): void {
+  public updateConfigItem(poolId: string, itemKeyPrefix: string, configItems: EventStateResItem[]): void {
+    const pool = this.pools.get(poolId);
+    if (!pool) throw new Error('Pool not found');
+
+    let config = pool.config
+
+    if (!config) {
+      throw new Error('pool has no config prop')
+    } else if (config === 'default') {
+      config = {}
+    } else {
+      config = JSON.parse(JSON.stringify(pool.config));
+    }
+    
+    configItems.forEach((configItem: EventStateResItem) => {
+      const itemKey = `${itemKeyPrefix}__${configItem.id}`;
+
+      if (configItem[EVENT_TIK_ACTION_PROP] === 'add') {
+        delete configItem[EVENT_TIK_ACTION_PROP];
+        config[itemKey] = {};
+        const { id, ...rest } = configItem;
+        config[itemKey] = rest;
+      } else if (configItem[EVENT_TIK_ACTION_PROP] === 'update') {
+        delete configItem[EVENT_TIK_ACTION_PROP];
+        if (config[itemKey]) {
+          config[itemKey] = {};
+          const { id, ...rest } = configItem;
+          config[itemKey] = rest;  
+        } else {
+          throw new Error('event not found: ' + itemKey)  
+        }
+      } else if (configItem[EVENT_TIK_ACTION_PROP] === 'delete') {
+        delete config[itemKey]
+      } else {
+        throw new Error('no tik action in event')
+      }
+    })
+
+    pool.config = config;
+    pool.lastActivity = new Date();
+  }
+
+  // public deleteConfigItem(poolId: string, itemKeyPrefix: string, configItems: EventStateResItem[]): void {
+  //   const pool = this.pools.get(poolId);
+  //   if (!pool) throw new Error('Pool not found');
+
+  //   let config = pool.config
+
+  //   if (!config) {
+  //     throw new Error('pool has no config prop')
+  //   } else if (config === 'default') {
+  //     config = {}
+  //   } else {
+  //     config = JSON.parse(JSON.stringify(pool.config));
+  //   }
+    
+  //   configItems.forEach((configItem: EventStateResItem) => {
+  //     const itemKey = `${itemKeyPrefix}__${configItem.id}`;
+  //     delete config[itemKey]
+  //   })
+
+  //   pool.config = config;
+  //   pool.lastActivity = new Date();
+  // }
+
+  public updateConfig(poolId: string, newConfig: any): void {
     const pool = this.pools.get(poolId);
     if (!pool) throw new Error('Pool not found');
 
@@ -231,7 +299,7 @@ export class PoolManager {
       req.ip,
       req.params.poolId,
       req.params.connId,
-      req.headers['cookie'] // If using session cookies
+      // req.headers['cookie'] // If using session cookies
     ].filter(Boolean).join('|');
     
     return createHash('sha256').update(components).digest('hex');
@@ -273,7 +341,7 @@ export class PoolManager {
     return true;
   }
 
-  private ensurePoolExists(poolId: string, config?: string): void {
+  private ensurePoolExists(poolId: string, config?: string | any): void {
     if (!this.pools.has(poolId)) {
       this.pools.set(poolId, {
         id: poolId,
@@ -287,13 +355,14 @@ export class PoolManager {
 
   private sendInitialState(pool: Pool, connection: Connection): void {
     const poolTime = (this.globalTimerValue + pool.offset) % 3600;
-    const message = `data: ${JSON.stringify({
+    const initialUserState: InitialUserState = {
       type: 'init',
       value: poolTime,
       config: pool.config,
       poolId: pool.id,
       id: connection.id,
-    })}\n\n`;
+    }
+    const message = `data: ${JSON.stringify(initialUserState)}\n\n`;
 
     connection.response.write(message);
   }
@@ -310,12 +379,13 @@ export class PoolManager {
     
     this.pools.forEach(pool => {
       const poolTime = (this.globalTimerValue + pool.offset) % 3600;
-      const message = `data: ${JSON.stringify({
-        value: poolTime,
-        config: pool.config,
+      const userTick: UserTick = {
+        poolTime: poolTime,
+        config: PoolConfigService.incrementPalyingEvents(pool.config),
         globalTime: this.globalTimerValue,
         poolId: pool.id
-      })}\n\n`;
+      }
+      const message = `data: ${JSON.stringify(userTick)}\n\n`;
 
       pool.clients.forEach(connection => {
         try {

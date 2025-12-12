@@ -1,0 +1,8 @@
+/.idea
+/downloads
+.env
+/.env
+node_modules
+.DS_Store
+
+/web/.editorconfig
