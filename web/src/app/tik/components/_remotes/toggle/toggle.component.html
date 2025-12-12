@@ -1,0 +1,20 @@
+<div class="input-group">
+  <label [for]="inputId" class="label" *ngIf="label">
+    {{ label }}
+  </label>
+
+  <div class="switch_box box_1">
+	  <div class="switch_box_value">
+	    {{ !selectedValue ? options[0] : options[1] }}
+	  </div>
+	  <input 
+		[name]="name" 
+		type="checkbox" 
+		class="switch_1" 
+		[disabled]="disabled"
+		[(ngModel)]="selectedValue"
+		(ngModelChange)="onValueChange($event)"
+		  
+	  >
+  </div>
+</div>

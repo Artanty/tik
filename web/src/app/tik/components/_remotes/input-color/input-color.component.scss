@@ -1,0 +1,158 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat&display=swap');
+
+// RESET START
+
+// Reset styles for color input
+input[type="color"] {
+	// Reset default browser styles
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	border: none;
+	background: none;
+	padding: 0;
+	margin: 0;
+	cursor: pointer;
+
+	// Remove default border and outline
+	outline: none;
+	box-shadow: none;
+
+	// Ensure consistent sizing
+	width: auto;
+	height: auto;
+	min-width: 2rem;
+	min-height: 2rem;
+
+	// Remove any default background images
+	background-image: none;
+
+	// For WebKit browsers (Chrome, Safari)
+	&::-webkit-color-swatch-wrapper {
+		padding: 0;
+		border: none;
+		background: none;
+	}
+
+	&::-webkit-color-swatch {
+		border: none;
+		border-radius: 4px;
+		padding: 0;
+	}
+
+	// For Firefox
+	&::-moz-color-swatch {
+		border: none;
+		border-radius: 4px;
+		padding: 0;
+	}
+
+	&::-moz-focus-inner {
+		border: 0;
+		padding: 0;
+	}
+
+	// For Microsoft Edge
+	&::-ms-fill {
+		border: none;
+	}
+
+	&::-ms-expand {
+		display: none;
+	}
+
+	// Focus states
+	&:focus {
+		outline: 2px solid #007bff;
+		outline-offset: 2px;
+	}
+
+	// Disabled state
+	&:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+}
+
+//RESET END
+.font-montserrat {
+	font-family: "Montserrat", sans-serif;
+	font-optical-sizing: auto;
+	font-weight: 400;
+	font-style: normal;
+}
+
+.input-group {
+
+	font-family: 'Montserrat', sans-serif;
+	font-size: 16px;
+	line-height: 1.25;
+	letter-spacing: 1px;
+	box-sizing: border-box;
+	transition: .25s all ease;
+}
+
+.label {
+	display: block;
+	margin-top: 12px;
+	font-family: "Montserrat", sans-serif;
+	font-optical-sizing: auto;
+	font-weight: 400;
+	font-style: normal;
+	margin-bottom: 8px;
+}
+
+.label {
+	color: rgba(255, 255, 255, 0.5);
+	text-transform: uppercase;
+	font-size: .75rem;
+	margin-bottom: 8px;
+}
+
+.label {
+	display: block;
+	margin-top: 12px;
+	font-family: "Montserrat", sans-serif;
+	font-optical-sizing: auto;
+	font-weight: 400;
+	font-style: normal;
+	margin-bottom: 8px;
+}
+
+.label {
+	color: rgba(255, 255, 255, 0.5);
+	text-transform: uppercase;
+	font-size: .75rem;
+	margin-bottom: 8px;
+}
+
+
+input[type="color"] {
+	padding: 0px;
+	border: none;
+
+	color: white;
+	font-size: 1.15rem;
+	// width: 100%;
+	max-width: 100%;
+	padding: .5rem 1rem;
+	border: 2px solid transparent;
+	outline: none;
+	border-radius: 1.5rem;
+	background-color: rgba(255, 255, 255, 0.25);
+	letter-spacing: 1px;
+	font-family: "Montserrat", sans-serif;
+	font-optical-sizing: auto;
+	font-weight: 400;
+	font-style: normal;
+
+	height: 43px;
+	width: 100%;
+}
+
+.input:hover,
+.input:focus {
+	color: white;
+	border: 2px solid rgba(255, 255, 255, 0.5);
+	background-color: transparent;
+}

@@ -1,0 +1,55 @@
+.default {
+	color: #d4d4d4;
+	font-size: 1rem;
+	font-family: 'Montserrat', sans-serif;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	// margin-top: 8px;
+	padding: 8px;
+	border-radius: 2rem;
+	display: block;
+	width: 100%;
+	background-color: transparent;
+	border: 2px solid #d4d4d4;
+	cursor: pointer;
+
+	&:hover {
+		color: #fff;
+		border: 2px solid #fff;
+	}
+}
+
+
+.submit {
+	color: #ffffff;
+	font-size: 1rem;
+	font-family: 'Montserrat', sans-serif;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	// margin-top: 24px;
+	padding: .75rem;
+	border-radius: 2rem;
+	display: block;
+	width: 100%;
+	background-color: rgba(17, 97, 237, .75);
+	border: none;
+	cursor: pointer;
+}
+
+.submit:hover {
+	background-color: rgba(17, 97, 237, 1);
+}
+
+button:disabled {
+	opacity: 0.5;
+}
+
+.icon-only {
+	height: 39.5px;
+	width: 39.5px;
+
+	& i {
+		font-size: 25px;
+		line-height: 0.8;
+	}
+}

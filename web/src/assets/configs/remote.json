@@ -1,0 +1,42 @@
+{
+    "event_bus_hooks": [
+        {
+            "on": {
+                "event": "AUTH_DONE"
+            },
+            "push": {
+                "type": "TRIGGER_ACTION",
+                "action": "INIT_TIK_STREAM",
+                "payload": {
+                    "project_id": "tik"               
+                }
+            },
+            "lives": "once"
+        }
+    ],
+    "interceptors": [
+        {
+            "on": "REQUEST",
+            "url_pattern": "/^http:\/\/localhost:3202\/(event|collectEventsState)(\/.*)?$/",
+            "data": [
+                {
+                    "target": "headers",
+                    "key": "Authorization",
+                    "valueHandler": {
+                        "source": "localStorage",
+                        "prop": "accessToken",
+                        "prepend": "Bearer "
+                    } 
+                },
+                {
+                    "target": "headers",
+                    "key": "X-Web-Host-URL",
+                    "valueHandler": {
+                        "source": "window",
+                        "prop": "location.origin"
+                    } 
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,1 @@
+export const ICON__OPTIONS = 'mu mu-opts-v'

@@ -1,0 +1,137 @@
+        /* Switch 1 Specific Styles Start */
+
+        // input[type="checkbox"].switch_1 {
+        //     font-size: 30px;
+        //     -webkit-appearance: none;
+        //     -moz-appearance: none;
+        //     appearance: none;
+        //     width: 100%;
+        //     height: 1.4em;
+        //     background-color: rgba(255, 255, 255, 0.25);
+        //     border-radius: 3em;
+        //     font-size: 28px;
+        //     border: 2px solid transparent;
+
+        //     position: relative;
+        //     cursor: pointer;
+        //     outline: none;
+        //     -webkit-transition: all .2s ease-in-out;
+        //     transition: all .2s ease-in-out;
+        //     margin-left: 0;
+
+        //     &:hover {
+        //         color: white;
+        //         border: 2px solid rgba(255, 255, 255, 0.5);
+        //         background-color: transparent;
+        //     }
+        // }
+
+        // input[type="checkbox"].switch_1:checked {
+        //     background: #c7a203;
+        // }
+
+        // input[type="checkbox"].switch_1:after {
+        //     position: absolute;
+        //     top: -1px;
+        //     content: "";
+        //     width: 1.4em;
+        //     height: 1.4em;
+        //     border-radius: 50%;
+        //     background: #fff;
+        //     -webkit-box-shadow: 0 0 .25em rgba(0, 0, 0, .3);
+        //     box-shadow: 0 0 .25em rgba(0, 0, 0, .3);
+        //     -webkit-transform: scale(.7);
+        //     transform: scale(.7);
+        //     left: 0;
+        //     -webkit-transition: all .2s ease-in-out;
+        //     transition: all .2s ease-in-out;
+
+        // }
+
+        // input[type="checkbox"].switch_1:checked:after {
+        //     left: calc(100% - 1.4em);
+        // }
+
+        // .switch_box.box_1 {
+        //     position: relative;
+        // }
+
+        // /* Switch 1 Specific Style End */
+        // .switch_box_value {
+        //     font-family: 'Montserrat', sans-serif;
+        //     font-size: 16px;
+        //     line-height: 1.25;
+        //     letter-spacing: 1px;
+
+        //     position: absolute;
+        //     z-index: 999;
+        //     top: 13px;
+        //     left: 73px;
+
+        //     /* Make text unselectable */
+        //     user-select: none;
+        //     -webkit-user-select: none;
+        //     -moz-user-select: none;
+        //     -ms-user-select: none;
+
+        //     /* Allow clicks to pass through */
+        //     pointer-events: none;
+        // }
+
+        select {
+            appearance: none;
+            /* Removes default arrow */
+            -webkit-appearance: none;
+            /* Safari/Chrome */
+            -moz-appearance: none;
+            /* Firefox */
+            background-image: url('data:image/svg+xml;utf8,<svg fill="white" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 30px;
+            /* Space for arrow */
+        }
+
+
+
+        .label {
+            display: block;
+            margin-top: 12px;
+            font-family: "Montserrat", sans-serif;
+            font-optical-sizing: auto;
+            font-weight: 400;
+            font-style: normal;
+            margin-bottom: 8px;
+        }
+
+        .label {
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            font-size: .75rem;
+            margin-bottom: 8px;
+        }
+
+
+
+        .select {
+            color: white;
+            font-size: 1.15rem;
+            width: 100%;
+            padding: .5rem 1rem;
+            border: 2px solid transparent;
+            outline: none;
+            border-radius: 1.5rem;
+            background-color: rgba(255, 255, 255, 0.25);
+            letter-spacing: 1px;
+            font-family: "Montserrat", sans-serif;
+            font-optical-sizing: auto;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        .select:hover,
+        .select:focus {
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            background-color: transparent;
+        }

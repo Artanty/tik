@@ -1,0 +1,35 @@
+
+ <button *ngIf="routerLink"
+ 	[class]="type === 'button' ? 'default' : 'submit'" 
+ 	[class.icon-only]="icon && !name"
+ 	[type]="type" 
+ 	[disabled]="isDisabled"
+ 	[routerLink]="routerLink"
+ 	
+>
+	<ng-container *ngTemplateOutlet="content context: { $implicit: name }"></ng-container>
+<!-- {{ name }} -->
+</button>
+
+<button *ngIf="!routerLink"
+ 	[class]="type === 'button' ? 'default' : 'submit'" 
+ 	[class.icon-only]="icon && !name"
+ 	[type]="type" 
+ 	[disabled]="isDisabled"
+ 	(click)="onClick($event)"
+ 	>
+ 	<!-- {{ name } -->
+ 		<ng-container *ngTemplateOutlet="content context: { $implicit: name, icon: icon }"></ng-container>
+ 	</button>
+
+
+ <!-- 	{{ disabled$ | async }}
+ 	disabled$ -->
+
+
+<ng-template #content let-name let-icon="icon">
+	<i *ngIf="icon" 
+	[class]="icon" 
+	aria-hidden="true"></i>
+	<span>{{name}}</span>
+</ng-template>

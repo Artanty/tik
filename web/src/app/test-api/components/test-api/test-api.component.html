@@ -1,0 +1,26 @@
+<div class="wrap">
+    <h1>Authentication Demo</h1>
+
+    <!-- Display Cookies and Local Storage -->
+    <div>
+      <h2>Cookies</h2>
+      <pre>{{ cookies | json }}</pre>
+      <h2>Local Storage</h2>
+      <pre>{{ localStorage | json }}</pre>
+    </div>
+
+    <!-- Authentication Buttons -->
+    <div>
+      <button (click)="register()">Register</button>
+      <button (click)="login()">Login</button>
+      <button (click)="logout()">Logout</button>
+      <button (click)="getProfile()">Get Profile</button>
+      <button (click)="updateCookiesAndLocalStorage()">updateCookiesAndLocalStorage</button>
+    </div>
+
+    <!-- Display API Response -->
+    <div *ngIf="apiResponse">
+      <h2>API Response</h2>
+      <pre>{{ apiResponse | json }}</pre>
+    </div>
+  </div>

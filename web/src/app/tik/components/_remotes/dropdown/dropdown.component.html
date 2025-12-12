@@ -1,0 +1,17 @@
+<div class="dropdown" [class.open]="isOpen" #dropdownElement>
+  <summary role="button" (click)="toggleDropdown($event)" [attr.aria-expanded]="isOpen">
+    <a class="button">
+      <i *ngIf="buttonIcon" [class]="buttonIcon"></i>
+      {{ buttonText }}
+    </a>
+  </summary>
+  
+  <ul *ngIf="isOpen" [style.display]="isOpen ? 'block' : 'none'">
+    <li *ngFor="let item of items">
+      <a href="#" (click)="onItemClick(item, $event)">
+        <i *ngIf="item.icon" [class]="item.icon"></i>
+        {{ item.name }}
+      </a>
+    </li>
+  </ul>
+</div>

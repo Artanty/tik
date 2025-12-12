@@ -1,0 +1,10 @@
+<div class="input-group">
+   <label [for]="inputId" class="label" *ngIf="label">
+       {{ label }}
+     </label>
+   <input [id]="inputId" class="input" [name]="name" 
+   [style.background]="selectedValue"
+   [(ngModel)]="selectedValue"
+   (ngModelChange)="onValueChange($event)"
+    [type]="type" />
+</div>
