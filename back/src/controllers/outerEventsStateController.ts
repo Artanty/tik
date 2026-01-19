@@ -125,18 +125,22 @@ export class OuterEventsStateController {
     //   };
     // }
     
-    const stat = poolManager.updateConfigItem(req.body.poolId, itemKeyPrefix, req.body.data);  
+    try {
+      const stat = poolManager.updateConfigItem(req.body.poolId, itemKeyPrefix, req.body.data);  
 
-    return {
-      success: true,
-      desc: 'poolManager.updateConfigItem successful',
-      stat: stat,
-      // receiverResponse: response.data,
-      // tokenMetadata: {
-      //   // id: tokenId,
-      //   // expiresIn: '1h'
-      // }
-    };
+      return {
+        success: true,
+        desc: 'poolManager.updateConfigItem successful',
+        stat: stat,
+        // receiverResponse: response.data,
+        // tokenMetadata: {
+        //   // id: tokenId,
+        //   // expiresIn: '1h'
+        // }
+      };
+    } catch (e) {
+      
+    }
   }
 }
 

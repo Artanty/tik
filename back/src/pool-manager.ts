@@ -88,8 +88,8 @@ export class PoolManager {
   }
 
   public updateConfigItem(poolId: string, itemKeyPrefix: string, configItems: EventStateResItem[]): any {
-    dd('updateConfigItem')
-    dd(configItems)
+    dd('updateConfigItem');
+    dd(configItems);
     const pool = this.pools.get(poolId);
     if (!pool) throw new Error('Pool not found');
 
@@ -125,6 +125,7 @@ export class PoolManager {
         resultStatistics['addedCount']++;
       } else if (configItem[EVENT_TIK_ACTION_PROP] === 'update') {
         delete configItem[EVENT_TIK_ACTION_PROP];
+
         if (config[itemKey]) {
           config[itemKey] = {};
           const { id, ...rest } = configItem;
@@ -133,8 +134,29 @@ export class PoolManager {
           resultStatistics['updated'].push(itemKey);
           resultStatistics['updatedCount']++;
         } else {
+          dd(config)
+          dd(itemKey)
           throw new Error('event not found: ' + itemKey)  
         }
+      } else if (configItem[EVENT_TIK_ACTION_PROP] === 'upsert') {
+        delete configItem[EVENT_TIK_ACTION_PROP];
+        dd('WE ARE HERE')
+        if (config[itemKey]) {
+          config[itemKey] = {};
+          const { id, ...rest } = configItem;
+          config[itemKey] = rest;
+
+          resultStatistics['updated'].push(itemKey);
+          resultStatistics['updatedCount']++;
+        } else {
+          config[itemKey] = {};
+          const { id, ...rest } = configItem;
+          config[itemKey] = rest;
+
+          resultStatistics['added'].push(itemKey);
+          resultStatistics['addedCount']++;  
+        }
+
       } else if (configItem[EVENT_TIK_ACTION_PROP] === 'delete') {
         
         delete config[itemKey]
@@ -404,11 +426,11 @@ export class PoolManager {
     
     this.pools.forEach(pool => {
       const poolTime = (this.globalTimerValue + pool.offset) % 3600;
-      const userTick: UserTick = {
-        poolTime: poolTime,
-        config: PoolConfigService.incrementPalyingEvents(pool.config),
-        globalTime: this.globalTimerValue,
-        poolId: pool.id
+      const userTick: Partial<UserTick> = {
+        // poolTime: poolTime,
+        config: PoolConfigService.incrementPlayingEvents(pool.config),
+        // globalTime: this.globalTimerValue,
+        // poolId: pool.id
       }
       const message = `data: ${JSON.stringify(userTick)}\n\n`;
 
