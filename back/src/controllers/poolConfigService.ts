@@ -1,5 +1,6 @@
 import { eventProgress } from "../core/constants"
 import { dd } from "../utils/dd"
+import { OuterEventsStateController } from "./outerEventsStateController"
 
 export interface PoolConfigItemBody {
 	cur: number
@@ -25,10 +26,14 @@ export class PoolConfigService {
 			const [eventId, eventConfig] = curr;
 
 			if (eventConfig.len && eventConfig.stt === eventProgress.PLAYING) {
+				// не достиг конца
 				if (eventConfig.cur < eventConfig.len) {
 					eventConfig.cur++;
 
 					// eventConfig.prc = Math.round((eventConfig.cur / eventConfig.len) * 100);
+				} else {
+					// достиг конца
+					OuterEventsStateController.finishEntry(eventId);
 				}
 			}
 			acc[eventId] = {};

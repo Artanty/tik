@@ -86,10 +86,7 @@ export class TikModule {
     this.eventBusListener$
       .pipe(
     ).subscribe((res: BusEvent) => {
-      // dd(res)
       if (res.event === 'TRIGGER_ACTION') {
-        // dd('WOW')
-        // dd(res)
         if (res.payload.action === 'INIT_TIK_STREAM') {
           this.initTikStream()
           this._sendProductButtonCollapsed()
@@ -114,7 +111,6 @@ export class TikModule {
           //     "project_id": "doro",
           //     "back_url": "http://localhost:3201"
           // }
-          console.log(res)
           res = res[0]
           this.getOuterEventsStates(res.project_id, res.back_url)
         });
@@ -130,7 +126,7 @@ export class TikModule {
     }
     this.http.post(`${process.env['TIK_BACK_URL']}/collectEventsState`, payload).subscribe(
       (response) => {
-        console.log(response)
+        //
       },
       (error) => {
         console.error(error.message)

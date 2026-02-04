@@ -63,9 +63,8 @@ app.post('/pool/:poolId/config', express.json(), (req, res) => {
 
 app.post('/collectEventsState', express.json(), async (req, res) => {
   try {
-    const { config } = req.body;
     const result = await OuterEventsStateController.getEventsState(req);
-    res.json({ data: result });
+    res.json(result);
   } catch (error) {
     handleError(res, error);
   }

@@ -88,8 +88,8 @@ export class PoolManager {
   }
 
   public updateConfigItem(poolId: string, itemKeyPrefix: string, configItems: EventStateResItem[]): any {
-    dd('updateConfigItem');
-    dd(configItems);
+    // dd('updateConfigItem');
+    // dd(configItems);
     const pool = this.pools.get(poolId);
     if (!pool) throw new Error('Pool not found');
 
@@ -228,6 +228,9 @@ export class PoolManager {
       }))
     };
   }
+
+  // public 
+
 
   public cleanupInactivePools(inactiveMinutes = 5): number {
     const threshold = Date.now() - inactiveMinutes * 60 * 1000;

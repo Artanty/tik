@@ -15,8 +15,12 @@ export interface EventStateResItem {
   tikAction?: string
 }
 
+type RequestKey = string; // Format: 'service__entity_id' e.g., 'doro__e_286'
+
 // todo: pass endpoint 
 export class OuterEventsStateController {
+  private static _pendingOuterRequests = new Set<RequestKey>();
+
   static async getEventsState(req: any) {
     // todo separate util\middleware pass auth header
     const authHeader = req.headers['authorization'];
@@ -40,36 +44,72 @@ export class OuterEventsStateController {
       backendUrlForRequest, // target URL
       thisBackOrigin // requester url (this back url)
     )
+    // dd(backendServiceToken)
+    let outerServiceResponse: { data: { data: EventStateResItem[] } } = { data: { data: [] } };
+    try {
+      outerServiceResponse = await axios.post(
+        `${backendUrlForRequest}/service/share-event-state`,
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Api-Key': backendServiceToken.token, // v2 todo change everywhere!
+            'X-Requester-Project': process.env.PROJECT_ID,
+            'X-Web-Host-URL': xWebHostUrlHeader,
+            'X-Requester-Url': thisBackOrigin,
+            'Authorization': authHeader,
+          },
+          timeout: 5000
+        }
+      );
+      dd(outerServiceResponse.data.data)
+      const itemKeySuffix = req.body.projectId.split('@')[0];
 
+      poolManager.updateConfigItem(req.body.poolId, itemKeySuffix, outerServiceResponse.data.data);
 
-    const response: { data: EventStateResItem[] } = await axios.post(
-      `${backendUrlForRequest}/service/share-event-state`,
-      payload,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Api-Key': backendServiceToken.token, // v2 todo change everywhere!
-          'X-Requester-Project': process.env.PROJECT_ID,
-          'X-Web-Host-URL': xWebHostUrlHeader,
-          'X-Requester-Url': thisBackOrigin,
-          'Authorization': authHeader,
+      return {
+        data: {
+          success: true,
+          receiverResponse: outerServiceResponse.data.data,
+          // tokenMetadata: {
+          //   // id: tokenId,
+          //   // expiresIn: '1h'
+          // }
         },
-        timeout: 5000
-      }
-    );
-
-    const itemKeySuffix = req.body.projectId.split('@')[0];
-
-    poolManager.updateConfigItem(req.body.poolId, itemKeySuffix, response.data);
-
-    return {
-      success: true,
-      receiverResponse: response.data,
-      // tokenMetadata: {
-      //   // id: tokenId,
-      //   // expiresIn: '1h'
-      // }
-    };
+        debug: {
+          outerServiceResponse: outerServiceResponse.data.data,
+          backendServiceToken,
+        }
+      };
+    } catch (error: any) {
+      dd(error.message)
+      return {
+        data: {
+          success: false,
+        },
+        debug: {
+          outerServiceResult: {
+            request: {
+              'query': `${backendUrlForRequest}/service/share-event-state`, 
+              'X-Api-Key': backendServiceToken.token, // v2 todo change everywhere!
+              'X-Requester-Project': process.env.PROJECT_ID,
+              'X-Web-Host-URL': xWebHostUrlHeader,
+              'X-Requester-Url': thisBackOrigin,
+              'Authorization': authHeader,
+            },
+            response: {
+              outerServiceResponse
+            },
+          },
+          backendServiceToken,
+        },
+        error: error.message
+        // tokenMetadata: {
+        //   // id: tokenId,
+        //   // expiresIn: '1h'
+        // }
+      };
+    }
   }
 
   static async updateEventsState(req: any) {
@@ -141,6 +181,104 @@ export class OuterEventsStateController {
     } catch (e) {
       
     }
+  }
+
+  /**
+   * todo: on register remote -pass map of entity-rest 
+   * */
+  public static async finishEntry(entryId: string) {
+    if (this._pendingOuterRequests.has(entryId)) {
+      console.log(`Request for ${entryId} is already in progress`);
+      return null;
+    }
+    this._pendingOuterRequests.add(entryId);
+    try {
+      const { project, entityType, id } = this.parseEntryId(entryId);
+      if (entityType === 'e') {
+        OuterEventsStateController.completeEvent(entryId, id);    
+      } else {
+        throw new Error(`complete entityType=${entityType} - not implemented`)
+      }
+    } catch (error: any) {
+      dd(error.message);
+    }
+  }
+
+  public static async completeEvent(entryId: string, eventId: string) {
+    const state = ''
+    await this.shareEventState(entryId, eventId, state)
+  }
+
+  /**
+   * сначала заканчиваем это событие здесь.
+   * это делается в любом случае, чтобы упростить флоу.
+   * затем отправляем запрос в соответствующий бэк.
+   * */
+  // todo: pass endpoint 
+  static async shareEventState(entryId: string, eventId: string, state: string) {
+    
+    // const thisBackOrigin = `${req.protocol}://${req.get('host')}` //
+    // const backendUrlForRequest = req.body.backendUrl;
+    const payload = { eventId, state };
+
+    // const backendServiceToken = await attachApiToken(
+    //   req.body.projectId, // target project, f.e.: note@back - pass from entry
+    //   backendUrlForRequest, // target URL
+    //   thisBackOrigin // requester url (this back url)
+    // )
+
+    try {
+      const backendUrlForRequest = 'http://localhost:3201';
+      const response = await axios.post(
+        `${backendUrlForRequest}/service/receive-event-state`,
+        payload,
+        {
+          // headers: {
+          //   'Content-Type': 'application/json',
+          //   'X-Api-Key': backendServiceToken.token, // v2 todo change everywhere!
+          //   'X-Requester-Project': process.env.PROJECT_ID,
+          //   'X-Web-Host-URL': xWebHostUrlHeader,
+          //   'X-Requester-Url': thisBackOrigin,
+          //   'Authorization': authHeader,
+          // },
+          timeout: 5000
+        }
+      );
+      dd(response)
+      
+    } finally {
+      // Remove from pending
+      if (this._pendingOuterRequests.has(entryId)) {
+        this._pendingOuterRequests.delete(entryId)
+      }
+    } 
+  }
+
+  static parseEntryId(key: string): {
+    project: string;
+    entityType: string;
+    id: string;
+  } {
+    // Format: service__entityType_id
+    const parts = key.split('__');
+    
+    if (parts.length !== 2) {
+      throw new Error(`Invalid key format: ${key}. Expected: service__entityType_id`);
+      
+    }
+    
+    const [project, rest] = parts;
+    const entityParts = rest.split('_');
+    
+    if (entityParts.length < 2) {
+      throw new Error(`Invalid entity format in key: ${key}. Expected: entityType_id`);
+      
+    }
+    
+    const entityType = entityParts[0];
+    const id = entityParts.slice(1).join('_'); // In case ID contains underscores
+    
+    return { project, entityType, id };
   }
 }
 
