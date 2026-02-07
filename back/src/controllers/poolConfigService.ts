@@ -1,7 +1,13 @@
 import { eventProgress } from "../core/constants"
 import { dd } from "../utils/dd"
 import { OuterEventsStateController } from "./outerEventsStateController"
-
+/**
+ *  "doro__e_329": {
+	 "cur": 0,
+	 "len": 10,
+	 "stt": 3
+    },
+ * */
 export interface PoolConfigItemBody {
 	cur: number
 	len: number
@@ -23,21 +29,21 @@ export class PoolConfigService {
 		
 		const updated = Object.entries(config).reduce((acc: any, curr: [string, PoolConfigItemBody]) => {
 			// dd(curr)
-			const [eventId, eventConfig] = curr;
+			const [eventId, entryConfig] = curr;
 
-			if (eventConfig.len && eventConfig.stt === eventProgress.PLAYING) {
+			if (entryConfig.len && entryConfig.stt === eventProgress.PLAYING) {
 				// не достиг конца
-				if (eventConfig.cur < eventConfig.len) {
-					eventConfig.cur++;
+				if (entryConfig.cur < entryConfig.len) {
+					entryConfig.cur++;
 
 					// eventConfig.prc = Math.round((eventConfig.cur / eventConfig.len) * 100);
 				} else {
 					// достиг конца
-					OuterEventsStateController.finishEntry(eventId);
+					OuterEventsStateController.finishEntry(eventId, entryConfig);
 				}
 			}
 			acc[eventId] = {};
-			acc[eventId] = eventConfig;
+			acc[eventId] = entryConfig;
 
 			return acc;
 		}, {})

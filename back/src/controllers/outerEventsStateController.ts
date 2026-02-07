@@ -3,13 +3,16 @@ import dotenv from 'dotenv';
 import { attachApiToken } from '../middlewares/attachApiToken';
 import { dd } from '../utils/dd';
 import { poolManager } from '../pool-manager';
+import { backendOrigin } from '../core/backend-origin.service';
+import { PoolConfigItemBody } from './poolConfigService';
+import { eventProgress, EVENT_TIK_ACTION_PROP } from '../core/constants';
 dotenv.config();
 
 export interface EventStateResItem {
   id: string
   cur: number
   len: number
-  prc: number
+  // prc: number
   stt: number
   //
   tikAction?: string
@@ -55,17 +58,17 @@ export class OuterEventsStateController {
             'Content-Type': 'application/json',
             'X-Api-Key': backendServiceToken.token, // v2 todo change everywhere!
             'X-Requester-Project': process.env.PROJECT_ID,
-            'X-Web-Host-URL': xWebHostUrlHeader,
+            'X-Web-Host-URL': xWebHostUrlHeader, // for validateUserAccessToken
             'X-Requester-Url': thisBackOrigin,
-            'Authorization': authHeader,
+            'Authorization': authHeader,  // for validateUserAccessToken
           },
           timeout: 5000
         }
       );
       dd(outerServiceResponse.data.data)
-      const itemKeySuffix = req.body.projectId.split('@')[0];
+      const itemKeyPrefix = req.body.projectId.split('@')[0];
 
-      poolManager.updateConfigItem(req.body.poolId, itemKeySuffix, outerServiceResponse.data.data);
+      poolManager.updateConfigItem(req.body.poolId, itemKeyPrefix, outerServiceResponse.data.data);
 
       return {
         data: {
@@ -78,7 +81,14 @@ export class OuterEventsStateController {
         },
         debug: {
           outerServiceResponse: outerServiceResponse.data.data,
-          backendServiceToken,
+          backendServiceTokenResult: {
+            request: {
+              targetProjectId: req.body.projectId,
+              backendUrlForRequest,
+              thisBackOrigin,
+            },
+            response: backendServiceToken,
+          },
         }
       };
     } catch (error: any) {
@@ -186,7 +196,7 @@ export class OuterEventsStateController {
   /**
    * todo: on register remote -pass map of entity-rest 
    * */
-  public static async finishEntry(entryId: string) {
+  public static async finishEntry(entryId: string, entryConfig: PoolConfigItemBody) {
     if (this._pendingOuterRequests.has(entryId)) {
       console.log(`Request for ${entryId} is already in progress`);
       return null;
@@ -195,7 +205,7 @@ export class OuterEventsStateController {
     try {
       const { project, entityType, id } = this.parseEntryId(entryId);
       if (entityType === 'e') {
-        OuterEventsStateController.completeEvent(entryId, id);    
+        OuterEventsStateController.completeEvent(entryId, id, entryConfig);    
       } else {
         throw new Error(`complete entityType=${entityType} - not implemented`)
       }
@@ -204,8 +214,35 @@ export class OuterEventsStateController {
     }
   }
 
-  public static async completeEvent(entryId: string, eventId: string) {
-    const state = ''
+  public static async completeEvent(entryId: string, eventId: string, poolEntry: PoolConfigItemBody) {
+    // convert:
+    // "doro__e_329": {
+    //     "cur": 0,
+    //     "len": 10,
+    //     "stt": 3
+    // },
+    // to:
+    // {
+    //   cur: 44
+    //   id: "e_314"
+    //   len: 600
+    //   stt: 2
+    //   tikAction: "update"
+    // }
+    const poolId = 'current_user_id';
+    // 1. get from outerState id from config entry id
+    // doro__e_329 -> e_329
+    const outerItemId = entryId.split('__')[1]
+    const itemKeyPrefix = entryId.split('__')[0]
+    const outerEntry: EventStateResItem = {
+      id: outerItemId,
+      cur: poolEntry.cur,
+      len: poolEntry.len,
+      stt: eventProgress.COMPLETED,
+      [EVENT_TIK_ACTION_PROP]: 'update'
+    }
+    const stat = poolManager.updateConfigItem(poolId, itemKeyPrefix, [outerEntry]);
+    const state = eventProgress.COMPLETED; // todo get somewhere or pass
     await this.shareEventState(entryId, eventId, state)
   }
 
@@ -215,37 +252,78 @@ export class OuterEventsStateController {
    * затем отправляем запрос в соответствующий бэк.
    * */
   // todo: pass endpoint 
-  static async shareEventState(entryId: string, eventId: string, state: string) {
-    
-    // const thisBackOrigin = `${req.protocol}://${req.get('host')}` //
-    // const backendUrlForRequest = req.body.backendUrl;
-    const payload = { eventId, state };
 
-    // const backendServiceToken = await attachApiToken(
-    //   req.body.projectId, // target project, f.e.: note@back - pass from entry
-    //   backendUrlForRequest, // target URL
-    //   thisBackOrigin // requester url (this back url)
-    // )
+  static async shareEventState(entryId: string, eventId: string, state: number) {
+    dd('shareEventState')
+    // const thisBackOrigin = `${req.protocol}://${req.get('host')}` //
+    const thisBackOrigin = backendOrigin.get();
+    // const backendUrlForRequest = req.body.backendUrl;
+    const backendUrlForRequest = 'http://localhost:3201'; // todo pass it
+    const payload = { eventId, state };
+    const targetProjectId = 'doro@back';
+    const backendServiceToken = await attachApiToken(
+      // req.body.projectId, // target project, f.e.: note@back - pass from entry
+      targetProjectId,
+      backendUrlForRequest, // target URL
+      thisBackOrigin // requester url (this back url)
+    )
+    let outerServiceResponse;
+
+    const debug = {
+      outerServiceResult: {
+        request: {
+          url: `${backendUrlForRequest}/service/receive-event-state`,
+          payload: JSON.stringify(payload),
+        },
+        // response: outerServiceResponse.data.data,
+      },
+      backendServiceTokenResult: {
+        request: {
+          targetProjectId,
+          backendUrlForRequest,
+          thisBackOrigin,
+        },
+        response: backendServiceToken,
+      },
+    }
+    dd(debug)
 
     try {
-      const backendUrlForRequest = 'http://localhost:3201';
-      const response = await axios.post(
+      
+      outerServiceResponse = await axios.post(
         `${backendUrlForRequest}/service/receive-event-state`,
         payload,
         {
-          // headers: {
-          //   'Content-Type': 'application/json',
-          //   'X-Api-Key': backendServiceToken.token, // v2 todo change everywhere!
-          //   'X-Requester-Project': process.env.PROJECT_ID,
-          //   'X-Web-Host-URL': xWebHostUrlHeader,
-          //   'X-Requester-Url': thisBackOrigin,
-          //   'Authorization': authHeader,
-          // },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Api-Key': backendServiceToken.token, // v2 todo change everywhere!
+            'X-Requester-Project': process.env.PROJECT_ID,
+            'X-Requester-Url': thisBackOrigin,
+          },
           timeout: 5000
         }
       );
-      dd(response)
-      
+      // dd(response)
+      const debug2 = {
+        outerServiceResult: {
+          // request: {
+          //   url: `${backendUrlForRequest}/service/receive-event-state`,
+          //   payload,
+          // },
+          response: outerServiceResponse.data,
+        },
+        // backendServiceTokenResult: {
+        //   request: {
+        //     targetProjectId,
+        //     backendUrlForRequest,
+        //     thisBackOrigin,
+        //   },
+        //   response: backendServiceToken,
+        // },
+      }
+      dd(debug2)
+    } catch (error: any) {
+      dd(error.message);
     } finally {
       // Remove from pending
       if (this._pendingOuterRequests.has(entryId)) {

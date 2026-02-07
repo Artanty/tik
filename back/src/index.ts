@@ -12,7 +12,9 @@ const httpServer = createServer(app);
 import cors from 'cors'
 import { OuterEventsStateController } from './controllers/outerEventsStateController';
 import { dd } from './utils/dd';
+import { setOriginMiddleware } from './middlewares/set-origin.middleware';
 
+app.use(setOriginMiddleware);
 app.use(cors()) // todo dev only
 app.use('/sse/:poolId', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
