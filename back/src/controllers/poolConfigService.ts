@@ -35,8 +35,6 @@ export class PoolConfigService {
 				// не достиг конца
 				if (entryConfig.cur < entryConfig.len) {
 					entryConfig.cur++;
-
-					// eventConfig.prc = Math.round((eventConfig.cur / eventConfig.len) * 100);
 				} else {
 					// достиг конца
 					OuterEventsStateController.finishEntry(eventId, entryConfig);

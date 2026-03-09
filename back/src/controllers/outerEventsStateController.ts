@@ -51,7 +51,7 @@ export class OuterEventsStateController {
     let outerServiceResponse: { data: { data: EventStateResItem[] } } = { data: { data: [] } };
     try {
       outerServiceResponse = await axios.post(
-        `${backendUrlForRequest}/service/share-event-state`,
+        `${backendUrlForRequest}/service/get-event-state`,
         payload,
         {
           headers: {
@@ -100,7 +100,7 @@ export class OuterEventsStateController {
         debug: {
           outerServiceResult: {
             request: {
-              'query': `${backendUrlForRequest}/service/share-event-state`, 
+              'query': `${backendUrlForRequest}/service/get-event-state`, 
               'X-Api-Key': backendServiceToken.token, // v2 todo change everywhere!
               'X-Requester-Project': process.env.PROJECT_ID,
               'X-Web-Host-URL': xWebHostUrlHeader,
@@ -148,7 +148,7 @@ export class OuterEventsStateController {
 
 
     // const response: { data: EventStateResItem[] } = await axios.post(
-    //   `${backendUrlForRequest}/service/share-event-state`,
+    //   `${backendUrlForRequest}/service/get-event-state`,
     //   payload,
     //   {
     //     headers: {
@@ -214,6 +214,10 @@ export class OuterEventsStateController {
     }
   }
 
+  /**
+   * 1) удаление ентри из местного стора
+   * 2) запрос на бэк проекта-владельца ентри
+   * */
   public static async completeEvent(entryId: string, eventId: string, poolEntry: PoolConfigItemBody) {
     // convert:
     // "doro__e_329": {
@@ -250,6 +254,7 @@ export class OuterEventsStateController {
    * сначала заканчиваем это событие здесь.
    * это делается в любом случае, чтобы упростить флоу.
    * затем отправляем запрос в соответствующий бэк.
+   * ответом на звапрос могут быть события, которые нужно добавить в пул.
    * */
   // todo: pass endpoint 
 
@@ -269,29 +274,9 @@ export class OuterEventsStateController {
     )
     let outerServiceResponse;
 
-    const debug = {
-      outerServiceResult: {
-        request: {
-          url: `${backendUrlForRequest}/service/receive-event-state`,
-          payload: JSON.stringify(payload),
-        },
-        // response: outerServiceResponse.data.data,
-      },
-      backendServiceTokenResult: {
-        request: {
-          targetProjectId,
-          backendUrlForRequest,
-          thisBackOrigin,
-        },
-        response: backendServiceToken,
-      },
-    }
-    dd(debug)
-
-    try {
-      
-      outerServiceResponse = await axios.post(
-        `${backendUrlForRequest}/service/receive-event-state`,
+    try {      
+      const { data: outerServiceResponse } = await axios.post(
+        `${backendUrlForRequest}/service/set-event-state`, // todo переименовать в set-event-state или update-event-state
         payload,
         {
           headers: {
@@ -303,25 +288,34 @@ export class OuterEventsStateController {
           timeout: 5000
         }
       );
-      // dd(response)
-      const debug2 = {
-        outerServiceResult: {
-          // request: {
-          //   url: `${backendUrlForRequest}/service/receive-event-state`,
-          //   payload,
-          // },
-          response: outerServiceResponse.data,
-        },
-        // backendServiceTokenResult: {
-        //   request: {
-        //     targetProjectId,
-        //     backendUrlForRequest,
-        //     thisBackOrigin,
-        //   },
-        //   response: backendServiceToken,
-        // },
+      dd(outerServiceResponse.result)
+      if (outerServiceResponse.success) {
+        if (outerServiceResponse.result && Array.isArray(outerServiceResponse.result) && outerServiceResponse.result.length) {
+          const entries: EventStateResItem[] = outerServiceResponse.result;
+          const poolId = 'current_user_id';
+          const itemKeyPrefix = 'doro';
+         
+          poolManager.updateConfigItem(poolId, itemKeyPrefix, outerServiceResponse.result);
+        }
       }
-      dd(debug2)
+      const debug = {
+        outerServiceResult: {
+          request: {
+            url: `${backendUrlForRequest}/service/set-event-state`,
+            payload,
+          },
+          response: outerServiceResponse,
+        },
+        backendServiceTokenResult: {
+          request: {
+            targetProjectId,
+            backendUrlForRequest,
+            thisBackOrigin,
+          },
+          response: backendServiceToken,
+        },
+      }
+      dd(debug);
     } catch (error: any) {
       dd(error.message);
     } finally {
@@ -332,6 +326,9 @@ export class OuterEventsStateController {
     } 
   }
 
+  /**
+   * doro__e_349 -> {project: doro, entityType: e, id: 349} 
+   * */
   static parseEntryId(key: string): {
     project: string;
     entityType: string;
