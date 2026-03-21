@@ -6,7 +6,7 @@ import { OuterEventsStateController } from "./outerEventsStateController"
 	 "cur": 0,
 	 "len": 10,
 	 "stt": 3
-    },
+	},
  * */
 export interface PoolConfigItemBody {
 	cur: number
@@ -28,7 +28,6 @@ export class PoolConfigService {
 		}
 		
 		const updated = Object.entries(config).reduce((acc: any, curr: [string, PoolConfigItemBody]) => {
-			// dd(curr)
 			const [eventId, entryConfig] = curr;
 
 			if (entryConfig.len && entryConfig.stt === eventProgress.PLAYING) {

@@ -47,7 +47,7 @@ export class OuterEventsStateController {
       backendUrlForRequest, // target URL
       thisBackOrigin // requester url (this back url)
     )
-    // dd(backendServiceToken)
+
     let outerServiceResponse: { data: { data: EventStateResItem[] } } = { data: { data: [] } };
     try {
       outerServiceResponse = await axios.post(
@@ -65,7 +65,7 @@ export class OuterEventsStateController {
           timeout: 5000
         }
       );
-      dd(outerServiceResponse.data.data)
+      
       const itemKeyPrefix = req.body.projectId.split('@')[0];
 
       poolManager.updateConfigItem(req.body.poolId, itemKeyPrefix, outerServiceResponse.data.data);
@@ -259,7 +259,7 @@ export class OuterEventsStateController {
   // todo: pass endpoint 
 
   static async shareEventState(entryId: string, eventId: string, state: number) {
-    dd('shareEventState')
+    
     // const thisBackOrigin = `${req.protocol}://${req.get('host')}` //
     const thisBackOrigin = backendOrigin.get();
     // const backendUrlForRequest = req.body.backendUrl;
@@ -288,7 +288,7 @@ export class OuterEventsStateController {
           timeout: 5000
         }
       );
-      dd(outerServiceResponse.result)
+      
       if (outerServiceResponse.success) {
         if (outerServiceResponse.result && Array.isArray(outerServiceResponse.result) && outerServiceResponse.result.length) {
           const entries: EventStateResItem[] = outerServiceResponse.result;
@@ -304,7 +304,7 @@ export class OuterEventsStateController {
             url: `${backendUrlForRequest}/service/set-event-state`,
             payload,
           },
-          response: outerServiceResponse,
+          response: JSON.stringify(outerServiceResponse),
         },
         backendServiceTokenResult: {
           request: {
@@ -315,7 +315,7 @@ export class OuterEventsStateController {
           response: backendServiceToken,
         },
       }
-      dd(debug);
+      
     } catch (error: any) {
       dd(error.message);
     } finally {
