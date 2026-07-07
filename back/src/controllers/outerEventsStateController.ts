@@ -249,7 +249,7 @@ export class OuterEventsStateController {
     }
     const stat = poolManager.updateConfigItem(poolId, itemKeyPrefix, [outerEntry]);
     const state = eventProgress.COMPLETED; // todo get somewhere or pass
-    await this.shareEventState(entryId, eventId, state)
+    await this.shareEventState(entryId, eventId, state, poolId)
   }
 
   /**
@@ -260,7 +260,7 @@ export class OuterEventsStateController {
    * */
   // todo: pass endpoint 
 
-  static async shareEventState(entryId: string, eventId: string, state: number) {
+  static async shareEventState(entryId: string, eventId: string, state: number, poolId: any) {
     
     // const thisBackOrigin = `${req.protocol}://${req.get('host')}` //
     const thisBackOrigin = backendOrigin.get();
@@ -297,7 +297,7 @@ export class OuterEventsStateController {
           const poolId = 'current_user_id';
           const itemKeyPrefix = 'doro';
          
-          poolManager.updateConfigItem(poolId, itemKeyPrefix, outerServiceResponseData.result);
+          poolManager.updateConfigItem(poolId, itemKeyPrefix, entries);
         }
       } else {
         throw new Error('wrong outer api response')
@@ -322,7 +322,18 @@ export class OuterEventsStateController {
     } catch (error: any) {
       dd('SHARE EVENT STATE ERROR:')
       dd(error.message);
-      responseLogService.save(outerServiceResponse!, error.message)
+      responseLogService.save(outerServiceResponse!, error.message);
+      const errorEntry: EventStateResItem = {
+        id: 'err_0',
+        cur: 0,
+        len: 3600,
+        stt: eventProgress.PAUSED,
+        [EVENT_TIK_ACTION_PROP]: 'upsert'
+      }
+      
+      const itemKeyPrefix = 'doro'; // todo - remove hardcode
+      
+      poolManager.updateConfigItem(poolId, itemKeyPrefix, [errorEntry]);
     } finally {
       // Remove from pending
       if (this._pendingOuterRequests.has(entryId)) {

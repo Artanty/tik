@@ -29,6 +29,7 @@ export interface ResponseLogEntry {
   method: string
   url: string
   status: number | string
+  requestBody?: string
   response: string
   customData?: string
 }

@@ -55,11 +55,13 @@ class ResponseLogService {
       console.warn('ResponseLogService.save: argument is not an AxiosResponse')
       return
     }
+    const body = res.config.data
     this.add({
       timestamp: new Date().toISOString(),
       method: (res.config.method ?? 'GET').toUpperCase(),
       url: res.config.url ?? 'unknown',
       status: res.status,
+      requestBody: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
       response: typeof res.data === 'string' ? res.data : JSON.stringify(res.data),
       ...(customData !== undefined ? { customData: JSON.stringify(customData) } : {}),
     })
