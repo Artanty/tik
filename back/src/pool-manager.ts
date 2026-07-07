@@ -109,38 +109,41 @@ export class PoolManager {
       updated: [],
       updatedCount: 0,
       deleted: [],
-      deletedCount: 0
+      deletedCount: 0,
+      deletedItems: [],
     } as any
     
     configItems.forEach((configItem: EventStateResItem) => {
       const itemKey = `${itemKeyPrefix}__${configItem.id}`;
 
       if (configItem[EVENT_TIK_ACTION_PROP] === 'add') {
-        delete configItem[EVENT_TIK_ACTION_PROP];
-        config[itemKey] = {};
-        const { id, ...rest } = configItem;
-        config[itemKey] = rest;
+        // delete configItem[EVENT_TIK_ACTION_PROP];
+        // config[itemKey] = {};
+        // const { id, ...rest } = configItem;
+        // config[itemKey] = rest;
 
-        resultStatistics['added'].push(itemKey);
-        resultStatistics['addedCount']++;
+        // resultStatistics['added'].push(itemKey);
+        // resultStatistics['addedCount']++;
+        throw new Error('DO NOT USE "add" ACTION, USE ONLY "upsert" AND "delete"');
       } else if (configItem[EVENT_TIK_ACTION_PROP] === 'update') {
-        delete configItem[EVENT_TIK_ACTION_PROP];
+        // delete configItem[EVENT_TIK_ACTION_PROP];
 
-        if (config[itemKey]) {
-          config[itemKey] = {};
-          const { id, ...rest } = configItem;
-          config[itemKey] = rest;
+        // if (config[itemKey]) {
+        //   config[itemKey] = {};
+        //   const { id, ...rest } = configItem;
+        //   config[itemKey] = rest;
 
-          resultStatistics['updated'].push(itemKey);
-          resultStatistics['updatedCount']++;
-        } else {
-          dd(config)
-          dd(itemKey)
-          throw new Error('event not found: ' + itemKey)  
-        }
+        //   resultStatistics['updated'].push(itemKey);
+        //   resultStatistics['updatedCount']++;
+        // } else {
+        //   dd(config)
+        //   dd(itemKey)
+        //   throw new Error('event not found: ' + itemKey)  
+        // }
+        throw new Error('DO NOT USE "update" ACTION, USE ONLY "upsert" AND "delete"');
       } else if (configItem[EVENT_TIK_ACTION_PROP] === 'upsert') {
         delete configItem[EVENT_TIK_ACTION_PROP];
-        dd('WE ARE HERE')
+        // dd('WE ARE HERE')
         if (config[itemKey]) {
           config[itemKey] = {};
           const { id, ...rest } = configItem;
@@ -158,11 +161,16 @@ export class PoolManager {
         }
 
       } else if (configItem[EVENT_TIK_ACTION_PROP] === 'delete') {
-        
-        delete config[itemKey]
+        const itemToReturn = JSON.parse(JSON.stringify({ id: itemKey, ...config[itemKey] }))
 
-        resultStatistics['deleted'].push(itemKey);
-        resultStatistics['deletedCount']++;
+        if (config[itemKey]) {
+          delete config[itemKey]
+
+          resultStatistics['deleted'].push(itemKey);
+          resultStatistics['deletedItems'].push(itemToReturn)
+          resultStatistics['deletedCount']++;
+        }
+        
         
       } else {
         throw new Error('no tik action in event')

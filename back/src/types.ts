@@ -24,6 +24,15 @@ export interface InitialUserState {
   id: string
 }
 
+export interface ResponseLogEntry {
+  timestamp: string
+  method: string
+  url: string
+  status: number | string
+  response: string
+  customData?: string
+}
+
 export interface UserTick {
   poolId: string
   config: string | any[]

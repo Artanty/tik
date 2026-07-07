@@ -6,6 +6,7 @@ import { poolManager } from '../pool-manager';
 import { backendOrigin } from '../core/backend-origin.service';
 import { PoolConfigItemBody } from './poolConfigService';
 import { eventProgress, EVENT_TIK_ACTION_PROP } from '../core/constants';
+import { responseLogService } from '../services/responseLog.service';
 dotenv.config();
 
 export interface EventStateResItem {
@@ -48,9 +49,10 @@ export class OuterEventsStateController {
       thisBackOrigin // requester url (this back url)
     )
 
-    let outerServiceResponse: { data: { data: EventStateResItem[] } } = { data: { data: [] } };
+    let outerServiceResponseData: { data: { data: EventStateResItem[] } } = { data: { data: [] } };
     try {
-      outerServiceResponse = await axios.post(
+      dd('running doro get-event-state')
+      outerServiceResponseData = await axios.post(
         `${backendUrlForRequest}/service/get-event-state`,
         payload,
         {
@@ -67,20 +69,20 @@ export class OuterEventsStateController {
       );
       
       const itemKeyPrefix = req.body.projectId.split('@')[0];
-
-      poolManager.updateConfigItem(req.body.poolId, itemKeyPrefix, outerServiceResponse.data.data);
+      dd(outerServiceResponseData.data)
+      poolManager.updateConfigItem(req.body.poolId, itemKeyPrefix, outerServiceResponseData.data.data);
 
       return {
         data: {
           success: true,
-          receiverResponse: outerServiceResponse.data.data,
+          receiverResponse: outerServiceResponseData.data.data,
           // tokenMetadata: {
           //   // id: tokenId,
           //   // expiresIn: '1h'
           // }
         },
         debug: {
-          outerServiceResponse: outerServiceResponse.data.data,
+          outerServiceResponseData: outerServiceResponseData.data.data,
           backendServiceTokenResult: {
             request: {
               targetProjectId: req.body.projectId,
@@ -108,7 +110,7 @@ export class OuterEventsStateController {
               'Authorization': authHeader,
             },
             response: {
-              outerServiceResponse
+              outerServiceResponseData
             },
           },
           backendServiceToken,
@@ -231,7 +233,7 @@ export class OuterEventsStateController {
     //   id: "e_314"
     //   len: 600
     //   stt: 2
-    //   tikAction: "update"
+    //   tikAction: "upsert"
     // }
     const poolId = 'current_user_id';
     // 1. get from outerState id from config entry id
@@ -243,7 +245,7 @@ export class OuterEventsStateController {
       cur: poolEntry.cur,
       len: poolEntry.len,
       stt: eventProgress.COMPLETED,
-      [EVENT_TIK_ACTION_PROP]: 'update'
+      [EVENT_TIK_ACTION_PROP]: 'upsert'
     }
     const stat = poolManager.updateConfigItem(poolId, itemKeyPrefix, [outerEntry]);
     const state = eventProgress.COMPLETED; // todo get somewhere or pass
@@ -254,7 +256,7 @@ export class OuterEventsStateController {
    * сначала заканчиваем это событие здесь.
    * это делается в любом случае, чтобы упростить флоу.
    * затем отправляем запрос в соответствующий бэк.
-   * ответом на звапрос могут быть события, которые нужно добавить в пул.
+   * ответом на запрос могут быть события, которые нужно добавить в пул.
    * */
   // todo: pass endpoint 
 
@@ -275,7 +277,7 @@ export class OuterEventsStateController {
     let outerServiceResponse;
 
     try {      
-      const { data: outerServiceResponse } = await axios.post(
+      outerServiceResponse  = await axios.post(
         `${backendUrlForRequest}/service/set-event-state`, // todo переименовать в set-event-state или update-event-state
         payload,
         {
@@ -288,15 +290,17 @@ export class OuterEventsStateController {
           timeout: 5000
         }
       );
-      
-      if (outerServiceResponse.success) {
-        if (outerServiceResponse.result && Array.isArray(outerServiceResponse.result) && outerServiceResponse.result.length) {
-          const entries: EventStateResItem[] = outerServiceResponse.result;
+      const outerServiceResponseData = outerServiceResponse.data;
+      if (outerServiceResponseData.success) {
+        if (outerServiceResponseData.result && Array.isArray(outerServiceResponseData.result) && outerServiceResponseData.result.length) {
+          const entries: EventStateResItem[] = outerServiceResponseData.result;
           const poolId = 'current_user_id';
           const itemKeyPrefix = 'doro';
          
-          poolManager.updateConfigItem(poolId, itemKeyPrefix, outerServiceResponse.result);
+          poolManager.updateConfigItem(poolId, itemKeyPrefix, outerServiceResponseData.result);
         }
+      } else {
+        throw new Error('wrong outer api response')
       }
       const debug = {
         outerServiceResult: {
@@ -304,7 +308,7 @@ export class OuterEventsStateController {
             url: `${backendUrlForRequest}/service/set-event-state`,
             payload,
           },
-          response: JSON.stringify(outerServiceResponse),
+          response: JSON.stringify(outerServiceResponseData),
         },
         backendServiceTokenResult: {
           request: {
@@ -315,9 +319,10 @@ export class OuterEventsStateController {
           response: backendServiceToken,
         },
       }
-      
     } catch (error: any) {
+      dd('SHARE EVENT STATE ERROR:')
       dd(error.message);
+      responseLogService.save(outerServiceResponse!, error.message)
     } finally {
       // Remove from pending
       if (this._pendingOuterRequests.has(entryId)) {

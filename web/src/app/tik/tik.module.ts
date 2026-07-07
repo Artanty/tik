@@ -117,7 +117,9 @@ export class TikModule {
     })
     
   }
-
+  /**
+   * Делаем запрос к tik@back чтобы получить события @doro
+   */
   public getOuterEventsStates(project_id: string, back_url: string) {
     const payload = {
       backendUrl: back_url,

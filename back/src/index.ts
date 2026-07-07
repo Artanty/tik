@@ -13,6 +13,7 @@ import cors from 'cors'
 import { OuterEventsStateController } from './controllers/outerEventsStateController';
 import { dd } from './utils/dd';
 import { setOriginMiddleware } from './middlewares/set-origin.middleware';
+import { ResponseLogController } from './controllers/responseLogController.js';
 
 app.use(setOriginMiddleware);
 app.use(cors()) // todo dev only
@@ -82,6 +83,9 @@ app.post('/updateEventsState', express.json(), async (req, res) => {
     handleError(res, error);
   }
 });
+
+// Response Logs Endpoint
+app.get('/logs', ResponseLogController.getLogs);
 
 // Health Endpoint
 app.get('/health', (req, res) => {
