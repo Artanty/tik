@@ -85,7 +85,7 @@ app.post('/updateEventsState', express.json(), async (req, res) => {
 });
 
 // Response Logs Endpoint
-app.get('/logs', ResponseLogController.getLogs);
+app.post('/logs', ResponseLogController.getLogs);
 
 // Health Endpoint
 app.get('/health', (req, res) => {
