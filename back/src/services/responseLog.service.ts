@@ -50,9 +50,16 @@ class ResponseLogService {
     return 'data' in r && 'status' in r && typeof r.status === 'number' && 'config' in r
   }
 
-  save(res: AxiosResponse, customData?: unknown): void {
+  save(res?: AxiosResponse | null, customData?: unknown): void {
     if (!this.isAxiosResponse(res)) {
-      console.warn('ResponseLogService.save: argument is not an AxiosResponse')
+      this.add({
+        timestamp: new Date().toISOString(),
+        method: 'UNKNOWN',
+        url: 'UNKNOWN',
+        status: 'ERROR',
+        response: customData !== undefined ? String(customData) : 'No response',
+        ...(customData !== undefined ? { customData: JSON.stringify(customData) } : {}),
+      })
       return
     }
     const body = res.config.data

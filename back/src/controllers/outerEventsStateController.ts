@@ -322,7 +322,7 @@ export class OuterEventsStateController {
     } catch (error: any) {
       dd('SHARE EVENT STATE ERROR:')
       dd(error.message);
-      responseLogService.save(outerServiceResponse!, error.message);
+      responseLogService.save(outerServiceResponse, error);
       const errorEntry: EventStateResItem = {
         id: 'err_0',
         cur: 0,
