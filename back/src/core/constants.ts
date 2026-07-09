@@ -1,6 +1,6 @@
 import path from 'path';
 
-export const STORAGE_ROOT = path.join(__dirname, '..', 'storage');
+export const STORAGE_ROOT = path.join(__dirname, '..', '..', 'storage');
 
 export const EVENT_TIK_ACTION_PROP = 'tikAction';
 

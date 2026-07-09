@@ -7,7 +7,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const router = express.Router();
 
-const STORAGE_ROOT = path.join(__dirname, '..', 'storage');
+const STORAGE_ROOT = path.join(__dirname, '..', '..', 'storage');
 
 // Ensure directory exists
 async function ensureDirExists(dirPath: any) {

@@ -7,7 +7,7 @@ import { checkFileWithData } from '../utils/fileStorageService';
 import { sanitizePath } from '../utils/sanitizePath';
 import { createShortHash } from '../utils/createHash';
 import { MemoryStorageService } from '../utils/memoryStorageService';
-const STORAGE_ROOT = path.join(__dirname, '..', 'storage');
+const STORAGE_ROOT = path.join(__dirname, '..', '..', 'storage');
 
 //* back: validateUserAccessToken v2. rename x-requester-url -> x-web-host-url;
 export async function validateUserAccessToken(req: Request, res: Response, next: NextFunction) {

@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { AxiosResponse } from 'axios'
-import { ResponseLogEntry } from '../types.js'
+import { ResponseLogEntry } from '../types'
 
 const LOG_FILE = path.resolve(process.cwd(), 'logs/response-log.json')
 const MAX_ENTRIES = 10

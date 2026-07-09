@@ -70,8 +70,7 @@ app.post('/pool/:poolId/config', express.json(), (req, res) => {
   }
 });
 
-app.post('/collectEventsState', [express.json(),validateUserAccessToken], async (req: any, res: any) => {
-  dd('/collectEventsState')
+app.post('/collectEventsState', [express.json(), validateUserAccessToken], async (req: any, res: any) => {
   try {
     const result = await OuterEventsStateController.getEventsState(req);
     res.json(result);

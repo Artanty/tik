@@ -42,7 +42,7 @@ export class OuterEventsStateController {
     const thisBackOrigin = `${req.protocol}://${req.get('host')}` 
     const backendUrlForRequest = req.body.backendUrl;
     const payload = {};
-
+    
     const backendServiceToken = await attachApiToken(
       req.body.projectId, // target project, f.e.: note@back
       backendUrlForRequest, // target URL
