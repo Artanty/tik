@@ -4,14 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx tsc",
-    "prePreStart": "node build/index.js",
-    "preStart": "nodemon --config nodemon.json",
     "start": "concurrently \"nodemon\"",
-    "swagger": "tsoa spec",
-    "db-sync": "ts-node src/dbMigrations/_runDbSync.ts",
-    "tagpush": "cmd /c tagpush.bat"
+    "debug": "nodemon --inspect --exec 'node --require ts-node/register' src/index.ts"
   },
   "keywords": [],
   "author": "Artyom",
@@ -30,11 +25,12 @@
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.23",
-    "@types/node": "^20.19.2",
+    "@types/node": "^20.19.43",
     "@types/socket.io": "^3.0.1",
     "concurrently": "^8.2.2",
     "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.3"
   }
 }

@@ -13,7 +13,10 @@ import cors from 'cors'
 import { OuterEventsStateController } from './controllers/outerEventsStateController';
 import { dd } from './utils/dd';
 import { setOriginMiddleware } from './middlewares/set-origin.middleware';
-import { ResponseLogController } from './controllers/responseLogController.js';
+
+import saveTempRoutes from './routes/saveTempRoutes';
+import { validateUserAccessToken } from './middlewares/validateUserAccessToken';
+import { ResponseLogController } from './controllers/responseLogController';
 
 app.use(setOriginMiddleware);
 app.use(cors()) // todo dev only
@@ -22,6 +25,8 @@ app.use('/sse/:poolId', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   next();
 });
+
+app.use('/save-temp', express.json(), saveTempRoutes);
 
 // SSE Endpoint
 app.get('/sse/:poolId', (req, res) => {
@@ -43,7 +48,8 @@ app.get('/sse/:poolId', (req, res) => {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*' // Required for SSE CORS
+    'Access-Control-Allow-Origin': '*', // Required for SSE CORS
+    
   });
 
   try {
@@ -64,7 +70,8 @@ app.post('/pool/:poolId/config', express.json(), (req, res) => {
   }
 });
 
-app.post('/collectEventsState', express.json(), async (req, res) => {
+app.post('/collectEventsState', [express.json(),validateUserAccessToken], async (req: any, res: any) => {
+  dd('/collectEventsState')
   try {
     const result = await OuterEventsStateController.getEventsState(req);
     res.json(result);

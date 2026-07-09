@@ -137,7 +137,9 @@ export class TikModule {
   }
 
   private initTikStream() {
-    this.SseServ.createEventSource()
+    // setT imeout(() => {
+      this.SseServ.createEventSource()
+    // })
   }
 
   private _sendProductButtonCollapsed() {

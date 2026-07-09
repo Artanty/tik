@@ -4,6 +4,12 @@
             "on": {
                 "event": "AUTH_DONE"
             },
+             "waitFor": {
+                "event": "PRODUCT_BTN_READY",
+                "conditions": {
+                    "projectId": "tik"
+                }
+            },
             "push": {
                 "type": "TRIGGER_ACTION",
                 "action": "INIT_TIK_STREAM",
@@ -12,12 +18,25 @@
                 }
             },
             "lives": "once"
+        },
+        {
+            "on": {
+                "event": "ASK_BACK_URLS"
+            },
+            "push": {
+                "type": "ANSWER",
+                "payload": {
+                    "project_id": "tik",
+                    "back_url": "http://localhost:3202"
+                }
+            },
+            "lives": 1
         }
     ],
     "interceptors": [
         {
             "on": "REQUEST",
-            "url_pattern": "/^http:\/\/localhost:3202\/(event|collectEventsState)(\/.*)?$/",
+            "url_pattern": "/^http:\/\/localhost:3202\/(sse1|collectEventsState)(\/.*)?$/",
             "data": [
                 {
                     "target": "headers",

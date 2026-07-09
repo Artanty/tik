@@ -99,22 +99,22 @@ export class OuterEventsStateController {
         data: {
           success: false,
         },
-        debug: {
-          outerServiceResult: {
-            request: {
-              'query': `${backendUrlForRequest}/service/get-event-state`, 
-              'X-Api-Key': backendServiceToken.token, // v2 todo change everywhere!
-              'X-Requester-Project': process.env.PROJECT_ID,
-              'X-Web-Host-URL': xWebHostUrlHeader,
-              'X-Requester-Url': thisBackOrigin,
-              'Authorization': authHeader,
-            },
-            response: {
-              outerServiceResponseData
-            },
-          },
-          backendServiceToken,
-        },
+        // debug: {
+        //   outerServiceResult: {
+        //     request: {
+        //       'query': `${backendUrlForRequest}/service/get-event-state`, 
+        //       'X-Api-Key': backendServiceToken.token, // v2 todo change everywhere!
+        //       'X-Requester-Project': process.env.PROJECT_ID,
+        //       'X-Web-Host-URL': xWebHostUrlHeader,
+        //       'X-Requester-Url': thisBackOrigin,
+        //       'Authorization': authHeader,
+        //     },
+        //     response: {
+        //       outerServiceResponseData
+        //     },
+        //   },
+        //   backendServiceToken,
+        // },
         error: error.message
         // tokenMetadata: {
         //   // id: tokenId,
