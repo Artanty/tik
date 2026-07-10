@@ -1,17 +1,13 @@
 import { Inject, Injectable } from '@angular/core';
 import {
   Observable,
-  filter,
-  delay,
-  from,
-  of,
-  take,
-  startWith,
+  Subscription,
   BehaviorSubject
 } from "rxjs";
 import { dd } from '../utilites/dd';
 import { BusEvent, EVENT_BUS_PUSHER } from 'typlib';
 import { isEmptyConfig } from '../utilites/isEmptyConfig';
+import { HttpClient, HttpDownloadProgressEvent, HttpEventType } from '@angular/common/http';
 
 export interface EventStateResItem {
   id: string,
@@ -28,7 +24,8 @@ export interface EventStateResItem {
 export class SseService {
   public isReady$ = new BehaviorSubject<boolean>(false)
 
-  private _eventSource!: EventSource
+  private _sseSubscription?: Subscription
+  private _lastProcessedLength = 0
 
   constructor(
     // @Inject(StoreService) private StoreServ: StoreService,
@@ -38,6 +35,7 @@ export class SseService {
     // @Inject(UserService) private UserServ: UserService,
     @Inject(EVENT_BUS_PUSHER)
     private eventBusPusher: (busEvent: BusEvent) => void,
+    private http: HttpClient,
   ) {}
   // todo: remoteids storage service
   public createEventSource(): void {
@@ -90,89 +88,67 @@ export class SseService {
    * Забираем через 1 стрим события для всех ремоутов текущего хоста.
    * */
   private _connectToTikPool(poolId: string): void {
- 
-    const eventSource = new EventSource(`${process.env['TIK_BACK_URL']}/sse/${poolId}`);
-  
-    eventSource.onmessage = (e: MessageEvent) => {
-      this.isReady$.next(true)
-      try {
-        const data: { config: Record<string, EventStateResItem> } = JSON.parse(e.data);
-        // const mins = Math.floor(data.value / 60);
-        // const secs = data.value % 60;
-        // const formattedTime = `${mins}:${secs.toString().padStart(2, '0')}`;
-        // dd(formattedTime)
-        // const eventValue: EventData = {
-        //   raw: data,
-        //   formattedTime: formattedTime,
-        //   minutes: mins,
-        //   seconds: secs,
-        //   totalSeconds: data.value,
-        //   state: 'isRunning' // replace to tik back?
-        // }
+    const url = `${process.env['TIK_BACK_URL']}/sse/${poolId}`;
 
-        // const streams = this.eventStreams$.getValue()
-        // streams.set(poolId, eventValue)
-        // this.eventStreams$.next(streams)
+    this._sseSubscription = this.http.get(url, {
+      observe: 'events',
+      reportProgress: true,
+      responseType: 'text'
+    }).subscribe({
+      next: (event) => {
+        if (event.type === HttpEventType.DownloadProgress) {
+          const progressEvent = event as HttpDownloadProgressEvent;
+          this.isReady$.next(true);
+          const partialText = progressEvent.partialText || '';
+          const newText = partialText.slice(this._lastProcessedLength);
+          this._lastProcessedLength = partialText.length;
 
-        // if (data.type && data.type === 'init') {
-        //   this.setConnectionState(connId, data.type);
-        // }
-        // dd(data)
-        if (!isEmptyConfig(data)) {
-          // dd('CONFIG IS NOT EMPTY:')
-          
-          const allRemotes = data.config
-          // dd(allRemotes)
-          const getProjectIdAndEventIdFromKey = (key: string): [string, string] => {
-            return [key.split('__')[0] + '@web', key.split('__')[1]]
-          }
-          const eventsByProjectId = Object.entries(allRemotes)
-            .reduce((acc: Record<string, EventStateResItem[]>, [eventKey, eventData]: [string, EventStateResItem]) => {
-              const [projectId, eventId] = getProjectIdAndEventIdFromKey(eventKey)
-              if (!acc[projectId]) {
-                acc[projectId] = [];
+          const chunks = newText.split('\n\n');
+          for (let i = 0; i < chunks.length - 1; i++) {
+            const chunk = chunks[i].trim();
+            if (!chunk.startsWith('data: ')) continue;
+            const jsonStr = chunk.slice(6);
+            try {
+              const data: { config: Record<string, EventStateResItem> } = JSON.parse(jsonStr);
+              if (!isEmptyConfig(data)) {
+                const allRemotes = data.config;
+                const getProjectIdAndEventIdFromKey = (key: string): [string, string] => {
+                  return [key.split('__')[0] + '@web', key.split('__')[1]];
+                };
+                const eventsByProjectId = Object.entries(allRemotes)
+                  .reduce((acc: Record<string, EventStateResItem[]>, [eventKey, eventData]: [string, EventStateResItem]) => {
+                    const [projectId, eventId] = getProjectIdAndEventIdFromKey(eventKey);
+                    if (!acc[projectId]) {
+                      acc[projectId] = [];
+                    }
+                    acc[projectId].push({ ...eventData, id: eventId });
+                    return acc;
+                  }, {});
+
+                Object.entries(eventsByProjectId).forEach(([remoteId, remotePayload]) => {
+                  const busEvent: BusEvent = {
+                    from: 'tik@web',
+                    to: remoteId,
+                    event: 'SSE_DATA',
+                    payload: remotePayload
+                  };
+                  this.eventBusPusher(busEvent);
+                });
               }
-              const eventObject = { ...eventData, id: eventId }
-              acc[projectId].push(eventObject)
-              return acc;
-            }, {})
-          // dd(eventsByProjectId)
-          
-          Object.entries(eventsByProjectId).forEach(([remoteId, remotePayload]) => {
-
-            const busEvent: BusEvent = {
-              from: 'tik@web',
-              to: remoteId,
-              event: 'SSE_DATA',
-              payload: remotePayload
+            } catch (error) {
+              console.error(error);
             }
-            // dd(busEvent)
-            this.eventBusPusher(busEvent)  
-          })
-        } else {
-          // dd('CONFIG IS EMPTY:')
-          // dd(data.config)
+          }
         }
-        
-        
-      } catch (error) {
+      },
+      error: (error) => {
+        this.isReady$.next(false);
         console.error(error);
+      },
+      complete: () => {
+        this.isReady$.next(false);
       }
-    };
-  
-    eventSource.onerror = (error) => {
-      this.isReady$.next(false)
-      console.error(error);
-
-      // const streams = this.eventStreams$.getValue()
-      // streams.delete(poolId);
-      // this.eventStreams$.next(streams)
-
-      
-      eventSource.close();
-    };
-  
-    
+    });
   }
 
 
@@ -216,8 +192,7 @@ export class SseService {
   // }
 
   public closeSseConnection() {
-    // this.StoreServ.setConnectionState('DISCONNECTED')
-    this._eventSource.close()
+    this._sseSubscription?.unsubscribe();
   }
 
 }

@@ -36,7 +36,7 @@
     "interceptors": [
         {
             "on": "REQUEST",
-            "url_pattern": "/^http:\/\/localhost:3202\/(sse1|collectEventsState)(\/.*)?$/",
+            "url_pattern": "/^http:\/\/localhost:3202\/(sse|collectEventsState)(\/.*)?$/",
             "data": [
                 {
                     "target": "headers",
