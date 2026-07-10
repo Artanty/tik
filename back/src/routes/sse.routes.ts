@@ -4,10 +4,11 @@ import { poolManager } from '../pool-manager';
 import { OuterEventsStateController } from '../controllers/outerEventsStateController';
 import { validateUserAccessToken } from '../middlewares/validateUserAccessToken';
 import { dd } from '../utils/dd';
+import { getUserFromRequest } from '../utils/getUserFromRequest';
 
 const router = Router();
 
-router.get('/sse/:poolId', (req, res) => {
+router.get('/sse/:poolId', validateUserAccessToken, (req, res) => {
   const verification = poolManager.verifyConnection(req);
   if (!verification.allowed) {
     res.writeHead(403, {
@@ -21,6 +22,8 @@ router.get('/sse/:poolId', (req, res) => {
     return;
   }
 
+  const userHandlerPoolId = getUserFromRequest(req);
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -29,7 +32,7 @@ router.get('/sse/:poolId', (req, res) => {
   });
 
   try {
-    poolManager.addConnection(req.params.poolId, req, res);
+    poolManager.addConnection(userHandlerPoolId, req, res);
   } catch (error) {
     handleError(res, error);
   }
@@ -54,7 +57,7 @@ router.post('/collectEventsState', express.json(), validateUserAccessToken, asyn
   }
 });
 
-router.post('/updateEventsState', express.json(), async (req, res) => {
+router.post('/updateEventsState', express.json(), validateUserAccessToken, async (req, res) => {
   dd('ROUTE: /updateEventsState');
   try {
     const { config } = req.body;

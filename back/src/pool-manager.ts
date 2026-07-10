@@ -91,7 +91,7 @@ export class PoolManager {
     // dd('updateConfigItem');
     // dd(configItems);
     const pool = this.pools.get(poolId);
-    if (!pool) throw new Error('Pool not found');
+    if (!pool) throw new Error(`Pool ${poolId} not found`);
 
     let config = pool.config
 
@@ -183,32 +183,9 @@ export class PoolManager {
     return resultStatistics;
   }
 
-  // public deleteConfigItem(poolId: string, itemKeyPrefix: string, configItems: EventStateResItem[]): void {
-  //   const pool = this.pools.get(poolId);
-  //   if (!pool) throw new Error('Pool not found');
-
-  //   let config = pool.config
-
-  //   if (!config) {
-  //     throw new Error('pool has no config prop')
-  //   } else if (config === 'default') {
-  //     config = {}
-  //   } else {
-  //     config = JSON.parse(JSON.stringify(pool.config));
-  //   }
-    
-  //   configItems.forEach((configItem: EventStateResItem) => {
-  //     const itemKey = `${itemKeyPrefix}__${configItem.id}`;
-  //     delete config[itemKey]
-  //   })
-
-  //   pool.config = config;
-  //   pool.lastActivity = new Date();
-  // }
-
   public updateConfig(poolId: string, newConfig: any): void {
     const pool = this.pools.get(poolId);
-    if (!pool) throw new Error('Pool not found');
+    if (!pool) throw new Error(`Pool ${poolId} not found`);
 
     pool.config = newConfig;
     pool.lastActivity = new Date();
@@ -439,7 +416,10 @@ export class PoolManager {
       const poolTime = (this.globalTimerValue + pool.offset) % 3600;
       const userTick: Partial<UserTick> = {
         // poolTime: poolTime,
-        config: PoolConfigService.incrementPlayingEvents(pool.config),
+        config: PoolConfigService.incrementPlayingEvents(
+          pool.id, 
+          pool.config
+        ),
         // globalTime: this.globalTimerValue,
         // poolId: pool.id
       }

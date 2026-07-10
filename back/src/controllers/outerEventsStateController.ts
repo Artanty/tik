@@ -7,6 +7,8 @@ import { backendOrigin } from '../core/backend-origin.service';
 import { PoolConfigItemBody } from './poolConfigService';
 import { eventProgress, EVENT_TIK_ACTION_PROP } from '../core/constants';
 import { responseLogService } from '../services/responseLog.service';
+import { getUserFromRequest } from '../utils/getUserFromRequest';
+import { doroResProp, thisProjectResProp } from '../utils/getResProp';
 dotenv.config();
 
 export interface EventStateResItem {
@@ -26,19 +28,6 @@ export class OuterEventsStateController {
   private static _pendingOuterRequests = new Set<RequestKey>();
 
   static async getEventsState(req: any) {
-    // todo separate util\middleware pass auth header
-    const authHeader = req.headers['authorization'];
-    if (!authHeader?.startsWith('Bearer ')) {
-      dd('Missing/invalid Authorization header');
-      throw new Error('Missing/invalid Authorization header')
-    }
-    // todo separate util\middleware pass X-Requester-URL
-    const xWebHostUrlHeader = req.headers['x-web-host-url'];
-    if (!xWebHostUrlHeader) {
-      dd('Missing x-web-host-url header');
-      throw new Error('Missing x-web-host-url header')
-    }
-
     const thisBackOrigin = `${req.protocol}://${req.get('host')}` 
     const backendUrlForRequest = req.body.backendUrl;
     const payload = {};
@@ -60,9 +49,9 @@ export class OuterEventsStateController {
             'Content-Type': 'application/json',
             'X-Api-Key': backendServiceToken.token, // v2 todo change everywhere!
             'X-Requester-Project': process.env.PROJECT_ID,
-            'X-Web-Host-URL': xWebHostUrlHeader, // for validateUserAccessToken
+            'X-Web-Host-URL': req.headers['x-web-host-url'], // for validateUserAccessToken
             'X-Requester-Url': thisBackOrigin,
-            'Authorization': authHeader,  // for validateUserAccessToken
+            'Authorization': req.headers['authorization'],
           },
           timeout: 5000
         }
@@ -70,7 +59,8 @@ export class OuterEventsStateController {
       
       const itemKeyPrefix = req.body.projectId.split('@')[0];
       dd(outerServiceResponseData.data)
-      poolManager.updateConfigItem(req.body.poolId, itemKeyPrefix, outerServiceResponseData.data.data);
+      const userHandlerPoolId = getUserFromRequest(req);
+      poolManager.updateConfigItem(userHandlerPoolId, itemKeyPrefix, outerServiceResponseData.data.data);
 
       return {
         data: {
@@ -82,8 +72,8 @@ export class OuterEventsStateController {
           // }
         },
         debug: {
-          outerServiceResponseData: outerServiceResponseData.data.data,
-          backendServiceTokenResult: {
+          [doroResProp()]: outerServiceResponseData.data.data,
+          [thisProjectResProp()]: {
             request: {
               targetProjectId: req.body.projectId,
               backendUrlForRequest,
@@ -125,9 +115,11 @@ export class OuterEventsStateController {
   }
 
   static async updateEventsState(req: any) {
-    const itemKeyPrefix = req.body.projectId.split('@')[0];
     try {
-      const stat = poolManager.updateConfigItem(req.body.poolId, itemKeyPrefix, req.body.data);  
+      const itemKeyPrefix = req.body.projectId.split('@')[0];
+      const userHandlerPoolId = getUserFromRequest(req);
+
+      const stat = poolManager.updateConfigItem(userHandlerPoolId, itemKeyPrefix, req.body.data);  
       dd(stat)
       return {
         success: true,
@@ -150,16 +142,21 @@ export class OuterEventsStateController {
   /**
    * todo: on register remote -pass map of entity-rest 
    * */
-  public static async finishEntry(entryId: string, entryConfig: PoolConfigItemBody) {
+  public static async finishEntry(
+    poolId: string,
+    entryId: string, 
+    entryConfig: PoolConfigItemBody
+  ) {
     if (this._pendingOuterRequests.has(entryId)) {
       console.log(`Request for ${entryId} is already in progress`);
       return null;
     }
-    this._pendingOuterRequests.add(entryId);
+    // mb name conflict in future. todo add user & mb host.
+    this._pendingOuterRequests.add(entryId); 
     try {
       const { project, entityType, id } = this.parseEntryId(entryId);
       if (entityType === 'e') {
-        OuterEventsStateController.completeEvent(entryId, id, entryConfig);    
+        OuterEventsStateController.completeEvent(poolId, entryId, id, entryConfig);    
       } else {
         throw new Error(`complete entityType=${entityType} - not implemented`)
       }
@@ -172,7 +169,12 @@ export class OuterEventsStateController {
    * 1) удаление ентри из местного стора
    * 2) запрос на бэк проекта-владельца ентри
    * */
-  public static async completeEvent(entryId: string, eventId: string, poolEntry: PoolConfigItemBody) {
+  public static async completeEvent(
+    poolId: string,
+    entryId: string, 
+    eventId: string, 
+    poolEntry: PoolConfigItemBody
+  ) {
     // convert:
     // "doro__e_329": {
     //     "cur": 0,
@@ -187,7 +189,7 @@ export class OuterEventsStateController {
     //   stt: 2
     //   tikAction: "upsert"
     // }
-    const poolId = 'current_user_id';
+    
     // 1. get from outerState id from config entry id
     // doro__e_329 -> e_329
     const outerItemId = entryId.split('__')[1]
@@ -201,7 +203,7 @@ export class OuterEventsStateController {
     }
     const stat = poolManager.updateConfigItem(poolId, itemKeyPrefix, [outerEntry]);
     const state = eventProgress.COMPLETED; // todo get somewhere or pass
-    await this.shareEventState(entryId, eventId, state, poolId)
+    await this.shareEventState(poolId, entryId, eventId, state)
   }
 
   /**
@@ -212,7 +214,12 @@ export class OuterEventsStateController {
    * */
   // todo: pass endpoint 
 
-  static async shareEventState(entryId: string, eventId: string, state: number, poolId: any) {
+  static async shareEventState(
+    poolId: string,
+    entryId: string,
+    eventId: string, 
+    state: number,
+    ) {
     
     // const thisBackOrigin = `${req.protocol}://${req.get('host')}` //
     const thisBackOrigin = backendOrigin.get();
@@ -238,6 +245,9 @@ export class OuterEventsStateController {
             'X-Api-Key': backendServiceToken.token, // v2 todo change everywhere!
             'X-Requester-Project': process.env.PROJECT_ID,
             'X-Requester-Url': thisBackOrigin,
+            // не хочу привязывать хост к пулу.
+            // привязка пользователя достаточна.
+            'X-User-Handler': poolId,
           },
           timeout: 5000
         }

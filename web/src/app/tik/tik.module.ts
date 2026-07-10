@@ -1,28 +1,24 @@
 import { CommonModule } from '@angular/common';
-import { inject, Inject, Injector, NgModule } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
-import { GuiComponent } from './gui.component';
-import { eventBusFilterByProject } from './utilites/eventBusFilterByProject';
+import { HttpClient } from '@angular/common/http';
+import { Inject, Injector, NgModule } from '@angular/core';
 import { createCustomElement } from '@angular/elements';
-import { WrapperComponent } from './components/_remotes/wrapper';
+import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { BusEvent, EVENT_BUS, EVENT_BUS_LISTENER, EVENT_BUS_PUSHER, HOST_NAME } from 'typlib';
+import { AskBackUrlsAction } from './actions/askBackUrls.action';
+import { AskProjectIdsAction } from './actions/askProjectsIds.action';
+import { AskSsePayloadAction } from './actions/askSsePayload.action';
+import { ButtonComponent } from './components/_remotes/button/button.component';
+import { DropdownComponent } from './components/_remotes/dropdown/dropdown.component';
+import { InputColorComponent } from './components/_remotes/input-color/input-color.component';
+import { InputComponent } from './components/_remotes/input/input.component';
 import { SelectComponent } from './components/_remotes/select/select.component';
 import { ToggleComponent } from './components/_remotes/toggle/toggle.component';
-import { InputComponent } from './components/_remotes/input/input.component';
-import { ButtonComponent } from './components/_remotes/button/button.component';
-import { InputColorComponent } from './components/_remotes/input-color/input-color.component';
-import { DropdownComponent } from './components/_remotes/dropdown/dropdown.component';
-import { BusEvent, EVENT_BUS, EVENT_BUS_LISTENER, EVENT_BUS_PUSHER, HOST_NAME } from 'typlib';
-import { BehaviorSubject, distinctUntilChanged, filter, forkJoin, Observable, take } from 'rxjs';
-import { SseService } from './services/sse.service';
-import { dd } from './utilites/dd';
-import { AskProjectIdsAction } from './actions/askProjectsIds.action';
-import { ExecutableAction } from './models/action.model';
-import { AskSsePayloadAction } from './actions/askSsePayload.action';
 import { projectsWithSSE } from './core/constants';
+import { ExecutableAction } from './models/action.model';
+import { SseService } from './services/sse.service';
 import { StreamContentService } from './services/stream-content.service';
-import { AskBackUrlsAction } from './actions/askBackUrls.action';
-import { HttpClient } from '@angular/common/http';
 import { ensureBackProjectId } from './utilites/ensureBackProjectId';
 
 
@@ -124,7 +120,6 @@ export class TikModule {
     const payload = {
       backendUrl: back_url,
       projectId: ensureBackProjectId(project_id),
-      poolId: 'current_user_id'
     }
     this.http.post(`${process.env['TIK_BACK_URL']}/collectEventsState`, payload).subscribe(
       (response) => {

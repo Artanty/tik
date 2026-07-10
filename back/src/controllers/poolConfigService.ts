@@ -21,13 +21,17 @@ export interface PoolConfigItem {
 
 export class PoolConfigService {
   
-	static incrementPlayingEvents(config: PoolConfigItem | string) {
-		
+	static incrementPlayingEvents(
+		poolId: string, 
+		config: PoolConfigItem | string
+	) {
+	
 		if (typeof config === 'string') {
 			return config	
 		}
 		
-		const updated = Object.entries(config).reduce((acc: any, curr: [string, PoolConfigItemBody]) => {
+		const updated = Object.entries(config)
+			.reduce((acc: any, curr: [string, PoolConfigItemBody]) => {
 			const [eventId, entryConfig] = curr;
 
 			if (entryConfig.len && entryConfig.stt === eventProgress.PLAYING) {
@@ -36,7 +40,11 @@ export class PoolConfigService {
 					entryConfig.cur++;
 				} else {
 					// достиг конца
-					OuterEventsStateController.finishEntry(eventId, entryConfig);
+					OuterEventsStateController.finishEntry(
+						poolId,
+						eventId, 
+						entryConfig
+					);
 				}
 			}
 			acc[eventId] = {};
