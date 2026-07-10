@@ -125,73 +125,25 @@ export class OuterEventsStateController {
   }
 
   static async updateEventsState(req: any) {
-    // // todo separate util\middleware pass auth header
-    // const authHeader = req.headers['authorization'];
-    // if (!authHeader?.startsWith('Bearer ')) {
-    //   dd('Missing/invalid Authorization header');
-    //   throw new Error('Missing/invalid Authorization header')
-    // }
-    // // todo separate util\middleware pass X-Requester-URL
-    // const xWebHostUrlHeader = req.headers['x-web-host-url'];
-    // if (!xWebHostUrlHeader) {
-    //   dd('Missing x-web-host-url header');
-    //   throw new Error('Missing x-web-host-url header')
-    // }
-
-    // const thisBackOrigin = `${req.protocol}://${req.get('host')}` 
-    // const backendUrlForRequest = req.body.backendUrl;
-    // const payload = {};
-
-    // const backendServiceToken = await attachApiToken(
-    //   req.body.projectId, // target project, f.e.: note@back
-    //   backendUrlForRequest, // target URL
-    //   thisBackOrigin // requester url (this back url)
-    // )
-
-
-    // const response: { data: EventStateResItem[] } = await axios.post(
-    //   `${backendUrlForRequest}/service/get-event-state`,
-    //   payload,
-    //   {
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'X-Api-Key': backendServiceToken.token, // v2 todo change everywhere!
-    //       'X-Requester-Project': process.env.PROJECT_ID,
-    //       'X-Web-Host-URL': xWebHostUrlHeader,
-    //       'X-Requester-Url': thisBackOrigin,
-    //       'Authorization': authHeader,
-    //     },
-    //     timeout: 5000
-    //   }
-    // );
-
     const itemKeyPrefix = req.body.projectId.split('@')[0];
-    // if (req.body.action === 'update') {
-    //   poolManager.updateConfigItem(req.body.poolId, itemKeyPrefix, req.body.data);  
-    // } else if (req.body.action === 'delete') {
-    //   poolManager.deleteConfigItem(req.body.poolId, itemKeyPrefix, req.body.data);  
-    // } else {
-    //   return {
-    //     success: false,
-    //     descr: 'no action provided'
-    //   };
-    // }
-    
     try {
       const stat = poolManager.updateConfigItem(req.body.poolId, itemKeyPrefix, req.body.data);  
-
+      dd(stat)
       return {
         success: true,
         desc: 'poolManager.updateConfigItem successful',
         stat: stat,
+        
         // receiverResponse: response.data,
         // tokenMetadata: {
         //   // id: tokenId,
         //   // expiresIn: '1h'
         // }
       };
-    } catch (e) {
-      
+    } catch (e: any) {
+      dd('ERROR:')
+      dd(e.message)
+      throw new Error(e.message)
     }
   }
 
