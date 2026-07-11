@@ -237,7 +237,7 @@ export class OuterEventsStateController {
 
     try {      
       outerServiceResponse  = await axios.post(
-        `${backendUrlForRequest}/service/set-event-state`, // todo переименовать в set-event-state или update-event-state
+        `${backendUrlForRequest}/service/set-event-state`, 
         payload,
         {
           headers: {
@@ -252,18 +252,22 @@ export class OuterEventsStateController {
           timeout: 5000
         }
       );
+      
       const outerServiceResponseData = outerServiceResponse.data;
-      if (outerServiceResponseData.success) {
-        if (outerServiceResponseData.result && Array.isArray(outerServiceResponseData.result) && outerServiceResponseData.result.length) {
-          const entries: EventStateResItem[] = outerServiceResponseData.result;
-          const poolId = 'current_user_id';
-          const itemKeyPrefix = 'doro';
-         
-          poolManager.updateConfigItem(poolId, itemKeyPrefix, entries);
-        }
-      } else {
+      if (!outerServiceResponseData.success) {
         throw new Error('wrong outer api response')
       }
+
+      if (
+        outerServiceResponseData.result && 
+        Array.isArray(outerServiceResponseData.result) && 
+        outerServiceResponseData.result.length
+      ) {
+        const entries: EventStateResItem[] = outerServiceResponseData.result;
+        const itemKeyPrefix = 'doro';
+        poolManager.updateConfigItem(poolId, itemKeyPrefix, entries);
+      }
+
       const debug = {
         outerServiceResult: {
           request: {
