@@ -29,7 +29,8 @@
       "node"
     ],
     "paths": {
-      "@assets/*": ["./src/assets/*"]
+      "@assets/*": ["./src/assets/*"],
+      "@shared": ["../../shared/web/src/app/shared/index.ts"]
     }
   },
   "angularCompilerOptions": {

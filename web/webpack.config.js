@@ -22,6 +22,7 @@ module.exports = {
   },
   resolve: {
     alias: {
+      '@shared': path.resolve(__dirname, '../../shared/web/src/app/shared/index.ts'),
       ...sharedMappings.getAliases(),
     }
   },
