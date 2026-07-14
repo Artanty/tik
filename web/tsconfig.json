@@ -33,6 +33,10 @@
       "@shared": ["../../shared/web/src/app/shared/index.ts"]
     }
   },
+  "include": [
+    "src/**/*.ts",
+    "../../shared/web/src/process-env.d.ts"
+  ],
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,

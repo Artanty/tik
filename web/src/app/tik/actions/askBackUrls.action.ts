@@ -25,7 +25,7 @@ export class AskBackUrlsAction implements ExecutableAction {
         const targetProjects = new Set(requiredProjectIds);
 
         this.eventBusListener$.pipe(
-            filter(res => filterBusEventsByProject(res, process.env['PROJECT_ID'], process.env['NAMESPACE'])),
+            filter(res => filterBusEventsByProject(res, process.env['PROJECT_ID']!, process.env['NAMESPACE']!)),
             filter(event => filterBusEventsByEvent(event, 'BACK_URLS')),
         
             // Accumulate responses in an object {project_id: back_url}

@@ -11,5 +11,6 @@
   "include": [
     "src/**/*.d.ts",
     "../../contracts/*.ts",
+    "../../shared/web/src/process-env.d.ts"
   ]
 }

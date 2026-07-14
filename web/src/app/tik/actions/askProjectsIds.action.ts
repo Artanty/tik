@@ -20,7 +20,7 @@ export class AskProjectIdsAction implements ExecutableAction {
 
     this.eventBusListener$
       .pipe(
-        filter(res => filterBusEventsByProject(res, process.env['PROJECT_ID'], process.env['NAMESPACE'])),
+        filter(res => filterBusEventsByProject(res, process.env['PROJECT_ID']!, process.env['NAMESPACE']!)),
         filter(res => filterBusEventsByEvent(res, 'PROJECTS_IDS')),
         map(res => res.payload.projectsIds),
         take(1)
