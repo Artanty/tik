@@ -1,9 +1,7 @@
 import { Inject, Injectable } from '@angular/core';
 import { BusEvent, EVENT_BUS_LISTENER, EVENT_BUS_PUSHER, HOST_NAME } from 'typlib';
 import { BehaviorSubject, filter, map, Observable, of, ReplaySubject, scan, Subject, take, takeUntil, timeout } from 'rxjs';
-import { filterBusEventsByEvent } from '../utilites/eventBusFilterByEvent';
-import { filterBusEventsByProject } from '../utilites/eventBusFilterByProject';
-import { dd } from '@shared';
+import { filterBusEventsByEvent, filterBusEventsByProject, dd } from '@shared';
 import { ExecutableAction } from '../models/action.model';
 
 
@@ -27,7 +25,7 @@ export class AskBackUrlsAction implements ExecutableAction {
         const targetProjects = new Set(requiredProjectIds);
 
         this.eventBusListener$.pipe(
-            filter(filterBusEventsByProject),
+            filter(res => filterBusEventsByProject(res, process.env['PROJECT_ID'], process.env['NAMESPACE'])),
             filter(event => filterBusEventsByEvent(event, 'BACK_URLS')),
         
             // Accumulate responses in an object {project_id: back_url}

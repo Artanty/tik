@@ -2,8 +2,7 @@ import { Inject, Injectable } from '@angular/core';
 import { BusEvent, EVENT_BUS_LISTENER, EVENT_BUS_PUSHER, HOST_NAME } from 'typlib';
 import { ExecutableAction } from '../models/action.model';
 import { filter, map, Observable, of, ReplaySubject, take } from 'rxjs';
-import { filterBusEventsByProject } from '../utilites/eventBusFilterByProject';
-import { filterBusEventsByEvent } from '../utilites/eventBusFilterByEvent';
+import { filterBusEventsByProject, filterBusEventsByEvent } from '@shared';
 
 
 @Injectable()
@@ -21,7 +20,7 @@ export class AskProjectIdsAction implements ExecutableAction {
 
     this.eventBusListener$
       .pipe(
-        filter(filterBusEventsByProject),
+        filter(res => filterBusEventsByProject(res, process.env['PROJECT_ID'], process.env['NAMESPACE'])),
         filter(res => filterBusEventsByEvent(res, 'PROJECTS_IDS')),
         map(res => res.payload.projectsIds),
         take(1)

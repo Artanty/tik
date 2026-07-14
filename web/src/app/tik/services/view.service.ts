@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { Nullable } from '../utilites/utility.types';
+import { Nullable } from '@shared';
 
 export interface IViewState {
   scope?: string,
