@@ -12,7 +12,7 @@ import {
 
 import { BusEvent, EVENT_BUS, EVENT_BUS_LISTENER, EVENT_BUS_PUSHER, HOST_NAME } from 'typlib';
 import { BehaviorSubject, filter, Observable } from 'rxjs';
-import { dd } from './../utilites/dd';
+import { dd } from '@shared';
 
 export class GuiDirectiveBody {
   private element: FormHTMLElement;

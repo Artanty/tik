@@ -3,7 +3,7 @@ import { BusEvent, EVENT_BUS_LISTENER, EVENT_BUS_PUSHER, HOST_NAME } from 'typli
 import { BehaviorSubject, filter, map, Observable, of, ReplaySubject, scan, Subject, take, takeUntil, timeout } from 'rxjs';
 import { filterBusEventsByEvent } from '../utilites/eventBusFilterByEvent';
 import { filterBusEventsByProject } from '../utilites/eventBusFilterByProject';
-import { dd } from '../utilites/dd';
+import { dd } from '@shared';
 import { ExecutableAction } from '../models/action.model';
 
 

@@ -4,7 +4,7 @@ import {
   Subscription,
   BehaviorSubject
 } from "rxjs";
-import { dd } from '../utilites/dd';
+import { dd } from '@shared';
 import { BusEvent, EVENT_BUS_PUSHER } from 'typlib';
 import { isEmptyConfig } from '../utilites/isEmptyConfig';
 import { HttpClient, HttpDownloadProgressEvent, HttpEventType } from '@angular/common/http';

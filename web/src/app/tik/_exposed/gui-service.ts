@@ -1,4 +1,4 @@
-import { dd } from "../utilites/dd";
+import { dd } from '@shared';
 import { ElementsMap } from "./custom-elements-map.constant"
 
 export async function getCustomElement(elementName: string): Promise<string> {
