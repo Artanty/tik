@@ -30,7 +30,9 @@
     ],
     "paths": {
       "@assets/*": ["./src/assets/*"],
-      "@shared": ["../../shared/web/src/app/shared/index.ts"]
+      "@shared": ["../../shared/web/src/app/shared/index.ts"],
+      "rxjs": ["../../shared/web/node_modules/rxjs"],
+      "rxjs/*": ["../../shared/web/node_modules/rxjs/*"]
     }
   },
   "include": [
