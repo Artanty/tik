@@ -285,6 +285,7 @@ export class OuterEventsStateController {
           response: backendServiceToken,
         },
       }
+      responseLogService.save(outerServiceResponse, debug);
     } catch (error: any) {
       dd('SHARE EVENT STATE ERROR:')
       dd(error.message);

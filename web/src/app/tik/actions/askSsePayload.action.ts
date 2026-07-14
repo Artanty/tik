@@ -2,8 +2,8 @@ import { Inject, Injectable } from '@angular/core';
 import { BusEvent, EVENT_BUS_LISTENER, EVENT_BUS_PUSHER, HOST_NAME } from 'typlib';
 import { ExecutableAction } from '../models/action.model';
 import { filter, map, Observable, of, ReplaySubject, take } from 'rxjs';
-import { eventBusFilterByProject } from '../utilites/eventBusFilterByProject';
-import { eventBusFilterByEvent } from '../utilites/eventBusFilterByEvent';
+import { filterBusEventsByProject } from '../utilites/eventBusFilterByProject';
+import { filterBusEventsByEvent } from '../utilites/eventBusFilterByEvent';
 
 
 @Injectable()
@@ -21,8 +21,8 @@ export class AskSsePayloadAction implements ExecutableAction {
 
     this.eventBusListener$
       .pipe(
-        filter(eventBusFilterByProject),
-        filter(res => eventBusFilterByEvent(res, 'SSE_PAYLOAD')),
+        filter(filterBusEventsByProject),
+        filter(res => filterBusEventsByEvent(res, 'SSE_PAYLOAD')),
         // map(res => res.payload.projectsIds),
         take(1)
       ).subscribe(res => {

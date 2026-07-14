@@ -42,7 +42,7 @@ import { ensureBackProjectId } from './utilites/ensureBackProjectId';
         return eventBus$
           .asObservable()
           .pipe(
-          // filter(eventBusFilterByProject)
+          // filter(filterBusEventsByProject)
         );
       },
       deps: [EVENT_BUS],
