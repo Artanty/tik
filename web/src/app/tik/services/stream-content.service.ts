@@ -1,5 +1,5 @@
 import { Injectable } from "@angular/core";
-import { obs$ } from "../utilites/observable-variable";
+import { obs$ } from "@shared";
 import { HttpClient } from "@angular/common/http";
 import { Observable } from "rxjs";
 
@@ -12,7 +12,7 @@ export class StreamContentService {
 	constructor(
 		private http: HttpClient,
 	) {}
-	public stream = obs$<StreamPayload>({})
+	public stream = obs$<StreamPayload>({}, true, 'tik:stream')
 
 	public streamPayload = {} as StreamPayload
  
