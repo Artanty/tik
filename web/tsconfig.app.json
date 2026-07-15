@@ -9,6 +9,7 @@
     "src/app/tik/_exposed/index.ts"
   ],
   "include": [
+    "src/**/*.ts",
     "src/**/*.d.ts",
     "../../contracts/*.ts",
     "../../shared/web/src/process-env.d.ts"
