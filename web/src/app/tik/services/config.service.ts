@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
+import { Nullable } from '@shared';
 
 import { BehaviorSubject, Observable } from 'rxjs';
-import { IAuthDto } from '../auth.component';
-import { Nullable } from './user-action.service';
 
-const defaultConfig: IAuthDto = {
+export type IAuthDto = any;
+
+const defaultConfig: any = {
   productName: "AU",
   authStrategy: "backend",
   tokenShareStrategy: 'saveTempDuplicate',
