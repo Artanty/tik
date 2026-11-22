@@ -25,7 +25,20 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   }
 
   const url = new URL(req.url ?? '/', 'http://localhost');
-  const parts = url.pathname.split('/').filter(Boolean);
+  // all routes live under API_PREFIX (safe row '/tik' in prod; unset = root, local dev)
+  const apiPrefix = (process.env.API_PREFIX ?? '').replace(/\/+$/, '');
+  const routePath = apiPrefix
+    ? url.pathname === apiPrefix
+      ? '/'
+      : url.pathname.startsWith(apiPrefix + '/')
+        ? url.pathname.slice(apiPrefix.length)
+        : null
+    : url.pathname;
+  if (routePath === null) {
+    sendJson(res, 404, { error: 'Not found' });
+    return;
+  }
+  const parts = routePath.split('/').filter(Boolean);
   const [a, b, c] = parts;
 
   // SSE stream (SPEC §3). AUTH_ENABLED=false (dev gate-off): no token lookup,

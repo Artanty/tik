@@ -81,6 +81,21 @@ Pipeline gap: githooklib NOT installed in tik (no core.hooksPath/build/, zero ta
 build/ + githooklib required before any -d commit can tag. Repo: 11 commits unpushed, 47
 paths uncommitted.
 
+**Resolutions (owner + agent, same day).** Owner fixed safe: SERVICE_DOMAIN=VDS hosting_data
+row added; API_PREFIX → `/tik`; BASE_KEY added; agreed AUTH_ENABLED=false stays for the
+FIRST deploy (gate-off, flip later); OUTER_EVENTS_* deferred until base funcs verified.
+KEY_BACK_URL needs no row — flow passes it as serf input → slave .env (added to
+../know/entries/deploy-slave.md). Agent adapted the code to serf's slim shape: build =
+`tsc --noEmit && esbuild → single root app.js` (jump's exact shape, the unit's
+`ExecStart=node app.js` now matches; start/main = app.js; app.js gitignored, old build/
+dir gone); storage/logs anchored to `__dirname` directly (app.js sits at the app root in a
+bundle); `API_PREFIX` support in the router (unset = root locally, `/tik` from safe in
+prod; `/tik/health` + `/tik/sse/...` verified, unprefixed → 404); githooklib ^2.4.1
+installed in root `build/` (core.hooksPath wired — first owner commit exercises the
+bump+TAG_VERSION chain). Remaining before `-d`: commit all, push (incl. the 11 older
+commits), confirm flow App installed on Artanty/tik; after deploy verify /tik/health on
+http://188.225.26.46:3202.
+
 ## [2026-11-19] Deploy prep — safe rows for tik@back → VDS (ns back, stage DEPLOY)
 
 `SSH_HOST=188.225.26.46`, `SSH_USER=root`, `USER_PASS=<root pass>` (VDS branch = password

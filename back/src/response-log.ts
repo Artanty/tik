@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import type { ResponseLogEntry } from './types';
 
-const LOG_FILE = resolve(__dirname, '..', 'logs', 'response-log.json');
+const LOG_FILE = resolve(__dirname, 'logs', 'response-log.json');
 const MAX_ENTRIES = 10;
 
 export interface LoggedResponse {

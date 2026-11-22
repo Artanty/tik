@@ -3,7 +3,7 @@ import { createHash } from 'crypto';
 import { join, resolve, relative } from 'path';
 import { HttpError } from './lib';
 
-export const STORAGE_ROOT = resolve(__dirname, '..', 'storage');
+export const STORAGE_ROOT = resolve(__dirname, 'storage');
 
 export function sanitizePath(input: string): string {
   return input

@@ -1,11 +1,11 @@
 {
   "name": "tik-back",
-  "version": "1.0.32",
+  "version": "1.0.33",
   "description": "tik back — SSE tick/pool server (standalone rewrite, zero runtime deps)",
-  "main": "build/app.js",
+  "main": "app.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node build/app.js",
+    "build": "tsc --noEmit && esbuild src/app.ts --bundle --platform=node --format=cjs --outfile=app.js",
+    "start": "node app.js",
     "dev": "tsx watch src/app.ts"
   },
   "engines": {
@@ -16,6 +16,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^20.19.43",
+    "esbuild": "^0.25.0",
     "tsx": "^4.20.3",
     "typescript": "^5.9.3"
   }

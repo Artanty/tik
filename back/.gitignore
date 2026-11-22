@@ -1,6 +1,6 @@
 .env
 node_modules
-build
+app.js
 storage
 logs
 .DS_Store
