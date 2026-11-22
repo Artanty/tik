@@ -1,6 +1,6 @@
 {
   "name": "tik-back",
-  "version": "1.0.34",
+  "version": "1.0.35",
   "description": "tik back — SSE tick/pool server (standalone rewrite, zero runtime deps)",
   "main": "app.js",
   "scripts": {
@@ -16,6 +16,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^20.19.43",
+    "dotenv": "^16.6.1",
     "esbuild": "^0.25.0",
     "tsx": "^4.20.3",
     "typescript": "^5.9.3"

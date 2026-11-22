@@ -81,6 +81,15 @@ Pipeline gap: githooklib NOT installed in tik (no core.hooksPath/build/, zero ta
 build/ + githooklib required before any -d commit can tag. Repo: 11 commits unpushed, 47
 paths uncommitted.
 
+**First deploy attempt (2026-11-22, run 121958593007) — failed at slave step 6.** serf +
+master side worked (tag pushed, safe resolved, workflow generated, slave run started,
+npm ci ok). Slave "Export .env to GitHub env" crashed: `Cannot find module 'dotenv'` — the
+generated step does `require('dotenv')`, a hidden assumption that holds for totp/jump
+(dotenv is their runtime dep) but not for tik (own zero-dep loader). Fix: `dotenv` added as
+devDependency (never imported by app code; `--omit=dev` keeps it off the box; verified
+resolvable + build still green). Gotcha recorded in ../know/entries/deploy-slave.md.
+Re-deploy = any new commit + `-d` (version auto-bumps to 1.0.35+).
+
 **Resolutions (owner + agent, same day).** Owner fixed safe: SERVICE_DOMAIN=VDS hosting_data
 row added; API_PREFIX → `/tik`; BASE_KEY added; agreed AUTH_ENABLED=false stays for the
 FIRST deploy (gate-off, flip later); OUTER_EVENTS_* deferred until base funcs verified.
