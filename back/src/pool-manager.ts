@@ -1,35 +1,44 @@
-import { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { createHash } from 'crypto';
-import { InitialUserState, UserTick } from './types';
-import { EventStateResItem } from './controllers/outerEventsStateController';
-import { EVENT_TIK_ACTION_PROP } from './core/constants';
-import { PoolConfigService } from './controllers/poolConfigService';
-import { dd } from './utils/dd';
-
+import { createHash, randomUUID } from 'crypto';
+import type { IncomingMessage, ServerResponse } from 'http';
+import {
+  EVENT_TIK_ACTION_PROP,
+  eventProgress,
+  type EventStateResItem,
+  type PoolConfig,
+  type PoolConfigItemBody,
+  type BanRecord,
+} from './types';
+import { dd } from './lib';
+// circular with outer-events (same direction as the node build): finishEntry only runs
+// from the tick loop, long after both modules are fully loaded
+import { finishEntry } from './outer-events';
 
 interface Connection {
   id: string;
-  response: Response;
+  response: ServerResponse;
   ip: string;
   userAgent?: string;
   connectedAt: Date;
-  request: Request;
+  request: IncomingMessage;
+  fingerprint: string;
 }
 
 interface Pool {
   id: string;
-  config: string | any;
+  config: PoolConfig;
   offset: number;
   clients: Set<Connection>;
   lastActivity: Date;
 }
 
-interface BanRecord {
-  fingerprint: string;
-  reason: string;
-  bannedAt: Date;
-  expiresAt?: Date;
+export interface MutationStats {
+  added: string[];
+  addedCount: number;
+  updated: string[];
+  updatedCount: number;
+  deleted: string[];
+  deletedItems: unknown[];
+  deletedCount: number;
 }
 
 export class PoolManager {
@@ -38,44 +47,31 @@ export class PoolManager {
   private isRunning = false;
   private timerInterval?: NodeJS.Timeout;
   private bannedClients = new Map<string, BanRecord>();
-  private clientIdentifiers = new Map<string, string>(); // clientId -> fingerprint
 
   public getPoolCount(): number {
     return this.pools.size;
   }
 
-  public getPoolIds(): string[] {
-    return Array.from(this.pools.keys());
-  }
-
-  public addConnection(poolId: string, req: Request, res: Response): void {
-
-    const fingerprint = this.getClientFingerprint(req);
-    
+  public addConnection(poolId: string, req: IncomingMessage, res: ServerResponse, urlPoolId: string): void {
+    const fingerprint = joinFingerprint(req, urlPoolId);
     if (this.isClientBanned(fingerprint)) {
-      res.writeHead(403, {
-        'Content-Type': 'application/json',
-        'Connection': 'close'
-      });
-      res.end(JSON.stringify({
-        error: "Banned",
-        reason: this.bannedClients.get(fingerprint)?.reason
-      }));  
+      const ban = this.bannedClients.get(fingerprint)!;
+      res.writeHead(403, { 'Content-Type': 'application/json', Connection: 'close' });
+      res.end(JSON.stringify({ error: 'Banned', reason: ban.reason }));
+      return;
     }
 
-    const clientId = uuidv4();
-    this.clientIdentifiers.set(clientId, fingerprint);
-
-    this.ensurePoolExists(poolId, req.query.config as string | undefined);
+    this.ensurePoolExists(poolId, configFromQuery(req));
     const pool = this.pools.get(poolId)!;
 
     const connection: Connection = {
-      id: uuidv4(),
+      id: randomUUID(),
       response: res,
-      ip: this.getClientIp(req),
+      ip: clientIp(req),
       userAgent: req.headers['user-agent'],
       connectedAt: new Date(),
-      request: req
+      request: req,
+      fingerprint,
     };
 
     pool.clients.add(connection);
@@ -87,106 +83,70 @@ export class PoolManager {
     req.on('close', () => this.removeConnection(poolId, connection.id));
   }
 
-  public updateConfigItem(poolId: string, itemKeyPrefix: string, configItems: EventStateResItem[]): any {
-    // dd('updateConfigItem');
-    // dd(configItems);
+  /**
+   * Merge config items (SPEC §4): tikAction upsert|delete only; entry stored without
+   * its id; "default" becomes {} on first mutation; returns stats.
+   */
+  public updateConfigItem(poolId: string, itemKeyPrefix: string, configItems: EventStateResItem[]): MutationStats {
     const pool = this.pools.get(poolId);
     if (!pool) throw new Error(`Pool ${poolId} not found`);
 
-    let config = pool.config
-
-    if (!config) {
-      throw new Error('pool has no config prop')
-    } else if (config === 'default') {
-      config = {}
+    let config: Record<string, PoolConfigItemBody>;
+    if (pool.config === 'default') {
+      config = {};
     } else {
       config = JSON.parse(JSON.stringify(pool.config));
     }
 
-    const resultStatistics = {
+    const stats: MutationStats = {
       added: [],
       addedCount: 0,
       updated: [],
       updatedCount: 0,
       deleted: [],
-      deletedCount: 0,
       deletedItems: [],
-    } as any
-    
-    configItems.forEach((configItem: EventStateResItem) => {
+      deletedCount: 0,
+    };
+
+    for (const configItem of configItems) {
       const itemKey = `${itemKeyPrefix}__${configItem.id}`;
+      const action = configItem[EVENT_TIK_ACTION_PROP];
 
-      if (configItem[EVENT_TIK_ACTION_PROP] === 'add') {
-        // delete configItem[EVENT_TIK_ACTION_PROP];
-        // config[itemKey] = {};
-        // const { id, ...rest } = configItem;
-        // config[itemKey] = rest;
-
-        // resultStatistics['added'].push(itemKey);
-        // resultStatistics['addedCount']++;
+      if (action === 'add') {
         throw new Error('DO NOT USE "add" ACTION, USE ONLY "upsert" AND "delete"');
-      } else if (configItem[EVENT_TIK_ACTION_PROP] === 'update') {
-        // delete configItem[EVENT_TIK_ACTION_PROP];
-
-        // if (config[itemKey]) {
-        //   config[itemKey] = {};
-        //   const { id, ...rest } = configItem;
-        //   config[itemKey] = rest;
-
-        //   resultStatistics['updated'].push(itemKey);
-        //   resultStatistics['updatedCount']++;
-        // } else {
-        //   dd(config)
-        //   dd(itemKey)
-        //   throw new Error('event not found: ' + itemKey)  
-        // }
+      } else if (action === 'update') {
         throw new Error('DO NOT USE "update" ACTION, USE ONLY "upsert" AND "delete"');
-      } else if (configItem[EVENT_TIK_ACTION_PROP] === 'upsert') {
-        delete configItem[EVENT_TIK_ACTION_PROP];
-        // dd('WE ARE HERE')
-        if (config[itemKey]) {
-          config[itemKey] = {};
-          const { id, ...rest } = configItem;
-          config[itemKey] = rest;
-
-          resultStatistics['updated'].push(itemKey);
-          resultStatistics['updatedCount']++;
+      } else if (action === 'upsert') {
+        const { id: _id, tikAction: _tikAction, ...rest } = configItem;
+        const isNew = !config[itemKey];
+        config[itemKey] = rest as PoolConfigItemBody;
+        if (isNew) {
+          stats.added.push(itemKey);
+          stats.addedCount++;
         } else {
-          config[itemKey] = {};
-          const { id, ...rest } = configItem;
-          config[itemKey] = rest;
-
-          resultStatistics['added'].push(itemKey);
-          resultStatistics['addedCount']++;  
+          stats.updated.push(itemKey);
+          stats.updatedCount++;
         }
-
-      } else if (configItem[EVENT_TIK_ACTION_PROP] === 'delete') {
-        const itemToReturn = JSON.parse(JSON.stringify({ id: itemKey, ...config[itemKey] }))
-
+      } else if (action === 'delete') {
         if (config[itemKey]) {
-          delete config[itemKey]
-
-          resultStatistics['deleted'].push(itemKey);
-          resultStatistics['deletedItems'].push(itemToReturn)
-          resultStatistics['deletedCount']++;
+          stats.deletedItems.push(JSON.parse(JSON.stringify({ id: itemKey, ...config[itemKey] })));
+          delete config[itemKey];
+          stats.deleted.push(itemKey);
+          stats.deletedCount++;
         }
-        
-        
       } else {
-        throw new Error('no tik action in event')
+        throw new Error('no tik action in event');
       }
-    })
+    }
 
     pool.config = config;
     pool.lastActivity = new Date();
-
-    return resultStatistics;
+    return stats;
   }
 
-  public updateConfig(poolId: string, newConfig: any): void {
+  public updateConfig(poolId: string, newConfig: PoolConfig): void {
     const pool = this.pools.get(poolId);
     if (!pool) throw new Error(`Pool ${poolId} not found`);
-
     pool.config = newConfig;
     pool.lastActivity = new Date();
   }
@@ -197,59 +157,45 @@ export class PoolManager {
       isRunning: this.isRunning,
       totalPools: this.pools.size,
       totalConnections: Array.from(this.pools.values()).reduce((sum, pool) => sum + pool.clients.size, 0),
-      pools: Array.from(this.pools.values()).map(pool => ({
+      pools: Array.from(this.pools.values()).map((pool) => ({
         poolId: pool.id,
         config: pool.config,
         offset: pool.offset,
         connectionCount: pool.clients.size,
         lastActivity: pool.lastActivity.toISOString(),
-        connections: Array.from(pool.clients).map(conn => ({
+        connections: Array.from(pool.clients).map((conn) => ({
           id: conn.id,
           ip: conn.ip,
           userAgent: conn.userAgent,
           connectedAt: conn.connectedAt.toISOString(),
-          durationSec: Math.floor((Date.now() - conn.connectedAt.getTime()) / 1000)
-        }))
-      }))
+          durationSec: Math.floor((Date.now() - conn.connectedAt.getTime()) / 1000),
+        })),
+      })),
     };
   }
-
-  // public 
-
 
   public cleanupInactivePools(inactiveMinutes = 5): number {
     const threshold = Date.now() - inactiveMinutes * 60 * 1000;
     let cleanedCount = 0;
-
     this.pools.forEach((pool, poolId) => {
       if (pool.lastActivity.getTime() < threshold) {
         this.closePool(poolId);
         cleanedCount++;
       }
     });
-
     return cleanedCount;
   }
 
   public kickConnection(
-    poolId: string, 
-    connectionId: string, 
-    options: {
-      banClient?: boolean;
-      banDurationMs?: number;
-      reason?: string;
-    } = {}
+    poolId: string,
+    connectionId: string,
+    options: { banClient?: boolean; banDurationMs?: number; reason?: string } = {},
   ): { success: boolean; banned: boolean; message: string } {
     const pool = this.pools.get(poolId);
     if (!pool) {
-      return {
-        success: false,
-        banned: false,
-        message: `Pool ${poolId} not found`
-      };
+      return { success: false, banned: false, message: `Pool ${poolId} not found` };
     }
 
-    // Find connection
     let connection: Connection | undefined;
     for (const conn of pool.clients) {
       if (conn.id === connectionId) {
@@ -257,248 +203,59 @@ export class PoolManager {
         break;
       }
     }
-
     if (!connection) {
       return {
         success: false,
         banned: false,
-        message: `Connection ${connectionId} not found in pool ${poolId}`
+        message: `Connection ${connectionId} not found in pool ${poolId}`,
       };
     }
 
-    // Ban logic
     let banned = false;
     if (options.banClient) {
-      const fingerprint = this.generateClientFingerprint(connection.request);
-      this.bannedClients.set(fingerprint, {
-        fingerprint,
+      this.bannedClients.set(connection.fingerprint, {
+        fingerprint: connection.fingerprint,
         reason: options.reason || 'Administrative ban',
         bannedAt: new Date(),
-        expiresAt: options.banDurationMs 
-          ? new Date(Date.now() + options.banDurationMs)
-          : undefined
+        expiresAt: options.banDurationMs ? new Date(Date.now() + options.banDurationMs) : undefined,
       });
       banned = true;
     }
 
-    // Send kick message
     try {
       const kickMessage = JSON.stringify({
         event: 'admin-kick',
         banned: options.banClient,
         reason: options.reason || 'Connection terminated by admin',
         reconnectAllowed: !options.banClient,
-        ...(options.banClient && options.banDurationMs 
-          ? { banDurationMs: options.banDurationMs } 
-          : {})
+        ...(options.banClient && options.banDurationMs ? { banDurationMs: options.banDurationMs } : {}),
       });
-
-      connection.response.write(`event: admin-kick\n`);
-      connection.response.write(`data: ${kickMessage}\n\n`);
+      connection.response.write(`event: admin-kick\ndata: ${kickMessage}\n\n`);
       connection.response.end();
     } catch (err) {
       console.error(`Error kicking connection ${connectionId}:`, err);
     }
 
-    // Remove connection
     pool.clients.delete(connection);
 
     return {
       success: true,
       banned,
-      message: `Connection ${connectionId} kicked from pool ${poolId}` +
-        (banned ? ' (BANNED)' : '')
+      message: `Connection ${connectionId} kicked from pool ${poolId}` + (banned ? ' (BANNED)' : ''),
     };
   }
 
-  // Add this method to check connections before accepting them
-  public verifyConnection(req: Request): { allowed: boolean; reason?: string } {
-    const fingerprint = this.generateClientFingerprint(req);
+  /** Pre-handshake ban gate for the SSE route. */
+  public verifyConnection(req: IncomingMessage, urlPoolId: string): { allowed: boolean; reason?: string } {
+    const fingerprint = joinFingerprint(req, urlPoolId);
     if (this.isClientBanned(fingerprint)) {
       const ban = this.bannedClients.get(fingerprint)!;
       return {
         allowed: false,
-        reason: ban.reason + (ban.expiresAt 
-          ? ` until ${ban.expiresAt.toISOString()}`
-          : ' (permanent)')
+        reason: ban.reason + (ban.expiresAt ? ` until ${ban.expiresAt.toISOString()}` : ' (permanent)'),
       };
     }
     return { allowed: true };
-  }
-
-  private generateClientFingerprint(req: Request): string {
-    const components = [
-      req.headers['user-agent'],
-      req.headers['accept-language'],
-      req.headers['sec-ch-ua'],
-      req.ip,
-      req.params.poolId,
-      req.params.connId,
-      // req.headers['cookie'] // If using session cookies
-    ].filter(Boolean).join('|');
-    
-    return createHash('sha256').update(components).digest('hex');
-  }
-
-  private banClient(
-    fingerprint: string, 
-    options: {
-      reason: string;
-      expiresAt?: Date;
-    }
-  ): void {
-    this.bannedClients.set(fingerprint, {
-      fingerprint,
-      reason: options.reason,
-      bannedAt: new Date(),
-      expiresAt: options.expiresAt
-    });
-
-    // Schedule automatic unban if duration was specified
-    if (options.expiresAt) {
-      const banDuration = options.expiresAt.getTime() - Date.now();
-      setTimeout(() => {
-        this.bannedClients.delete(fingerprint);
-      }, banDuration);
-    }
-  }
-
-  private isClientBanned(fingerprint: string): boolean {
-    const banRecord = this.bannedClients.get(fingerprint);
-    if (!banRecord) return false;
-    
-    // Check if ban has expired
-    if (banRecord.expiresAt && banRecord.expiresAt < new Date()) {
-      this.bannedClients.delete(fingerprint);
-      return false;
-    }
-    
-    return true;
-  }
-
-  private ensurePoolExists(poolId: string, config?: string | any): void {
-    if (!this.pools.has(poolId)) {
-      this.pools.set(poolId, {
-        id: poolId,
-        config: config || 'default',
-        offset: this.globalTimerValue,
-        clients: new Set(),
-        lastActivity: new Date()
-      });
-    }
-  }
-
-  private sendInitialState(pool: Pool, connection: Connection): void {
-    const poolTime = (this.globalTimerValue + pool.offset) % 3600;
-    const initialUserState: InitialUserState = {
-      type: 'init',
-      value: poolTime,
-      config: pool.config,
-      poolId: pool.id,
-      id: connection.id,
-    }
-    const message = `data: ${JSON.stringify(initialUserState)}\n\n`;
-
-    connection.response.write(message);
-  }
-
-  private startGlobalTimerIfNeeded(): void {
-    if (!this.isRunning && this.pools.size > 0) {
-      this.isRunning = true;
-      this.timerInterval = setInterval(() => this.broadcastUpdates(), 1000);
-    }
-  }
-
-  private broadcastUpdates(): void {
-    this.globalTimerValue++;
-    
-    this.pools.forEach(pool => {
-      const poolTime = (this.globalTimerValue + pool.offset) % 3600;
-      const userTick: Partial<UserTick> = {
-        // poolTime: poolTime,
-        config: PoolConfigService.incrementPlayingEvents(
-          pool.id, 
-          pool.config
-        ),
-        // globalTime: this.globalTimerValue,
-        // poolId: pool.id
-      }
-      const message = `data: ${JSON.stringify(userTick)}\n\n`;
-
-      pool.clients.forEach(connection => {
-        try {
-          connection.response.write(message);
-          pool.lastActivity = new Date();
-        } catch (err) {
-          this.removeConnection(pool.id, connection.id);
-        }
-      });
-    });
-
-    // Auto-stop timer if no pools left
-    if (this.pools.size === 0) {
-      this.stopGlobalTimer();
-    }
-  }
-
-  private stopGlobalTimer(): void {
-    if (this.timerInterval) {
-      clearInterval(this.timerInterval);
-      this.isRunning = false;
-    }
-  }
-
-  private removeConnection(poolId: string, connectionId: string): void {
-    const pool = this.pools.get(poolId);
-    if (!pool) return;
-
-    for (const conn of pool.clients) {
-      if (conn.id === connectionId) {
-        pool.clients.delete(conn);
-        break;
-      }
-    }
-
-    if (pool.clients.size === 0) {
-      this.pools.delete(poolId);
-    }
-  }
-
-  private closePool(poolId: string): void {
-    const pool = this.pools.get(poolId);
-    if (!pool) return;
-
-    pool.clients.forEach(conn => {
-      try {
-        conn.response.end();
-      } catch (err) {
-        console.error('Error closing connection:', err);
-      }
-    });
-
-    this.pools.delete(poolId);
-  }
-
-  private getClientIp(req: Request): string {
-    return [
-      req.headers['x-forwarded-for'],
-      req.socket?.remoteAddress,
-      req.connection?.remoteAddress
-    ]
-      .filter(Boolean)
-      .toString()
-      .split(',')[0]
-      .trim();
-  }
-  private getClientFingerprint(req: Request): string {
-    const components = [
-      req.headers['user-agent'],
-      req.headers['accept-language'],
-      req.headers['sec-ch-ua-platform'], // "Android", "Chrome OS", "Chromium OS", "iOS", "Linux", "macOS", "Windows", or "Unknown"
-      req.ip
-    ].join('|');
-    
-    return createHash('sha256').update(components).digest('hex');
   }
 
   public getBannedClients(): BanRecord[] {
@@ -508,7 +265,161 @@ export class PoolManager {
   public unbanClient(fingerprint: string): boolean {
     return this.bannedClients.delete(fingerprint);
   }
+
+  /** Stop the timer and close everything (SIGTERM). */
+  public shutdown(): void {
+    this.stopGlobalTimer();
+    for (const poolId of Array.from(this.pools.keys())) {
+      this.closePool(poolId);
+    }
+  }
+
+  private isClientBanned(fingerprint: string): boolean {
+    const banRecord = this.bannedClients.get(fingerprint);
+    if (!banRecord) return false;
+    if (banRecord.expiresAt && banRecord.expiresAt < new Date()) {
+      this.bannedClients.delete(fingerprint);
+      return false;
+    }
+    return true;
+  }
+
+  private ensurePoolExists(poolId: string, config?: string): void {
+    if (!this.pools.has(poolId)) {
+      this.pools.set(poolId, {
+        id: poolId,
+        config: config || 'default',
+        offset: this.globalTimerValue,
+        clients: new Set(),
+        lastActivity: new Date(),
+      });
+    }
+  }
+
+  private sendInitialState(pool: Pool, connection: Connection): void {
+    const poolTime = (this.globalTimerValue + pool.offset) % 3600;
+    const initialUserState = {
+      type: 'init',
+      value: poolTime,
+      config: pool.config,
+      poolId: pool.id,
+      id: connection.id,
+    };
+    connection.response.write(`data: ${JSON.stringify(initialUserState)}\n\n`);
+  }
+
+  /**
+   * THE core design decision (see DECISIONS.md): ONE global timer for the whole process.
+   * Every pool advances on the same monotonic clock (pool.offset anchors it), so pools can
+   * never drift apart and timer cost is O(1) regardless of pool/connection count.
+   */
+  private startGlobalTimerIfNeeded(): void {
+    if (!this.isRunning && this.pools.size > 0) {
+      this.isRunning = true;
+      this.timerInterval = setInterval(() => this.broadcastUpdates(), 1000);
+    }
+  }
+
+  private broadcastUpdates(): void {
+    this.globalTimerValue++;
+
+    this.pools.forEach((pool) => {
+      const updated = incrementPlayingEvents(pool.id, pool.config);
+      // serialize once per pool per tick, write the same string to every client
+      const message = `data: ${JSON.stringify({ config: updated })}\n\n`;
+
+      pool.clients.forEach((connection) => {
+        try {
+          connection.response.write(message);
+        } catch (err) {
+          this.removeConnection(pool.id, connection.id);
+        }
+      });
+      pool.lastActivity = new Date();
+    });
+
+    if (this.pools.size === 0) this.stopGlobalTimer();
+  }
+
+  private stopGlobalTimer(): void {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = undefined;
+      this.isRunning = false;
+    }
+  }
+
+  private removeConnection(poolId: string, connectionId: string): void {
+    const pool = this.pools.get(poolId);
+    if (!pool) return;
+    for (const conn of pool.clients) {
+      if (conn.id === connectionId) {
+        pool.clients.delete(conn);
+        break;
+      }
+    }
+    if (pool.clients.size === 0) this.pools.delete(poolId);
+  }
+
+  private closePool(poolId: string): void {
+    const pool = this.pools.get(poolId);
+    if (!pool) return;
+    pool.clients.forEach((conn) => {
+      try {
+        conn.response.end();
+      } catch (err) {
+        console.error('Error closing connection:', err);
+      }
+    });
+    this.pools.delete(poolId);
+  }
 }
 
-// Singleton instance
+/**
+ * Advance PLAYING entries: cur < len -> cur++; cur >= len -> fire-and-forget finish flow.
+ * Entries are mutated in place; returns the (same-referenced) entries under fresh keys.
+ */
+function incrementPlayingEvents(poolId: string, config: PoolConfig): PoolConfig {
+  if (typeof config === 'string') return config;
+
+  const updated: Record<string, PoolConfigItemBody> = {};
+  for (const [eventId, entryConfig] of Object.entries(config)) {
+    if (entryConfig.len && entryConfig.stt === eventProgress.PLAYING) {
+      if (entryConfig.cur < entryConfig.len) {
+        entryConfig.cur++;
+      } else {
+        finishEntry(poolId, eventId, entryConfig);
+      }
+    }
+    updated[eventId] = entryConfig;
+  }
+  return updated;
+}
+
+/** sha256 over [user-agent, accept-language, sec-ch-ua, remote addr, url pool id] (SPEC §7). */
+function joinFingerprint(req: IncomingMessage, urlPoolId: string): string {
+  const components = [
+    req.headers['user-agent'],
+    req.headers['accept-language'],
+    req.headers['sec-ch-ua'],
+    req.socket.remoteAddress,
+    urlPoolId,
+  ].filter(Boolean);
+  return createHash('sha256').update(components.join('|')).digest('hex');
+}
+
+function configFromQuery(req: IncomingMessage): string | undefined {
+  const query = (req.url ?? '').split('?')[1];
+  if (!query) return undefined;
+  const match = query.split('&').find((p) => p.startsWith('config='));
+  return match ? decodeURIComponent(match.slice('config='.length)) : undefined;
+}
+
+function clientIp(req: IncomingMessage): string {
+  const fwd = req.headers['x-forwarded-for'];
+  const raw = Array.isArray(fwd) ? fwd.join(',') : fwd;
+  return [raw, req.socket.remoteAddress].filter(Boolean).toString().split(',')[0].trim();
+}
+
+// singleton instance
 export const poolManager = new PoolManager();

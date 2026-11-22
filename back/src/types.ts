@@ -1,43 +1,41 @@
-import { Request, Response } from 'express';
-import { Socket } from 'net';
+export const EVENT_TIK_ACTION_PROP = 'tikAction';
 
-export interface ClientConnection {
+export const eventProgress = {
+  STOPPED: 0,
+  PLAYING: 1,
+  PAUSED: 2,
+  COMPLETED: 3,
+} as const;
+
+export interface EventStateResItem {
   id: string;
-  response: Response;
-  ip: string;
-  connectedAt: Date;
-  userAgent?: string;
+  cur: number;
+  len: number;
+  stt: number;
+  tikAction?: string;
 }
 
-export interface Pool {
-  id: string;
-  configHash: string;
-  createdAt: Date;
-  clients: Set<ClientConnection>;
+export interface PoolConfigItemBody {
+  cur: number;
+  len: number;
+  stt: number;
 }
 
-export interface InitialUserState {
-  type: string
-  value: number
-  config: string
-  poolId: string
-  id: string
-}
+export type PoolConfig = Record<string, PoolConfigItemBody> | string;
 
 export interface ResponseLogEntry {
-  timestamp: string
-  method: string
-  url: string
-  status: number | string
-  requestBody?: string
-  response: string
-  customData?: string
+  timestamp: string;
+  method: string;
+  url: string;
+  status: number | string;
+  requestBody?: string;
+  response: string;
+  customData?: string;
 }
 
-export interface UserTick {
-  poolId: string
-  config: string | any[]
-
-  poolTime: number
-  globalTime: number
+export interface BanRecord {
+  fingerprint: string;
+  reason: string;
+  bannedAt: Date;
+  expiresAt?: Date;
 }
