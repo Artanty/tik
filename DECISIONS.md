@@ -126,3 +126,37 @@ param ignored ✓), 1s ticks ✓, `cur` 0→1→2 ✓, completion upsert `stt:3`
 fallback on unreachable outer back ✓, kick+ban → `admin-kick` named event + stream closed ✓,
 bans list/unban (+`banHours`→`expiresAt`) ✓, save-temp save (`sub/dir`→`sub_dir` sanitizer)
 + check true/false ✓, `/logs` ERROR entries ✓, auth 401/403 ✓. Test artifacts cleaned.
+
+**Deploy LIVE + public routing (2026-11-23).** Second deploy (dotenv fix) succeeded: unit
+`tik` active+enabled on the VDS, /root/tik with bundled app.js, listening :3202 (journal:
+"Server running on port 3202"). Public access model confirmed: non-standard ports
+(:3001, :3202) are firewall-filtered; port 80 = nginx with prefix routes (/totp → 3001
+live; /tik/health on :80 → Express-style 404 from the default backend). So PORT stays in
+safe (internal listener), public URL = http://188.225.26.46/tik/…, pending an nginx
+location for /tik → 127.0.0.1:3202. Follow-up once proxied: BASE_KEY must be registered
+for the origin the app reports behind nginx (Host header, likely http://188.225.26.46
+without port) — re-register + update safe, or key@ /get-token 403s on URL mismatch
+(only matters when collectEventsState / finish-flow get enabled).
+
+**Public route LIVE (2026-11-23).** nginx `location /tik/` → 127.0.0.1:3202 added to
+/etc/nginx/sites-enabled/default (mirrors the /totp/ block + `proxy_buffering off` for SSE;
+inserted before the /totp/ anchor via python, idempotent guard, backup
+`default.bak-20261123-182759`, nginx -t ok, reloaded — pre-existing pomi-doro.ru
+duplicate-server-name warnings untouched). Verified publicly: /tik/health returns the
+pool JSON; /tik/sse/prodcheck streams init + 1s ticks in realtime (buffering off works);
+:3202 stays firewall-filtered. Public URL = http://188.225.26.46/tik/… (no port). Totp
+research: NO pipeline automation for back nginx routes exists (totp's was one-time manual
+per its DECISIONS.md; only its static web slot automates the pattern) — possible future
+serf improvement: idempotent location-ensure in the VDS ssh scripts. Pending when outer
+flows enable: re-register BASE_KEY for origin `http://188.225.26.46` (nginx Host has no
+port) + update safe.
+
+**serf: nginx route auto-ensure + PROXY_BUFFERING flag (2026-11-23).** Both VDS variants of
+serf's generated workflow now idempotently ensure `location ${API_PREFIX}/` →
+127.0.0.1:$PORT after the service restart (backup → insert → nginx -t → reload; restore +
+fail on test failure; awk-based — a python heredoc breaks the YAML block scalar, hit in
+dev). New safe flag: `PROXY_BUFFERING=off` adds `proxy_buffering off;` to the generated
+location — REQUIRED for tik (SSE), unset = omitted (totp/jump unchanged). Fixture-tested
+all four paths; deploy.yml YAML-validated; logged in serf/DECISIONS.md; NOT committed.
+Action needed: add `PROXY_BUFFERING=off` (stage DEPLOY) to safe for tik; tik's existing
+/tik/ route makes its next deploy a logged no-op.
