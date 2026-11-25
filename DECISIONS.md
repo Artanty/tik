@@ -160,3 +160,41 @@ location — REQUIRED for tik (SSE), unset = omitted (totp/jump unchanged). Fixt
 all four paths; deploy.yml YAML-validated; logged in serf/DECISIONS.md; NOT committed.
 Action needed: add `PROXY_BUFFERING=off` (stage DEPLOY) to safe for tik; tik's existing
 /tik/ route makes its next deploy a logged no-op.
+
+**Ecosystem: safe api v2 (2026-11-23).** safe got per-project api_version (v1 default) +
+snapshots + open /api/get-safe-api-version; flow routes v2 projects to serf's new
+deploy_v2.yml; safe@web enforces PRJ_/HST_ naming (red keys, blocked saves) once the api
+select is v2. For tik when migrating: PRJ_-rename its project_data rows (BASE_KEY→PRJ_BASE_KEY
+etc.; SSH_*/REVERSED_PROXY_SLOT/API_PREFIX stay), hosting flag becomes
+HST_NGINX_PROXY_BUFFERING (v2 workflow reads that name), snapshot before → flip → deploy
+(-d, auto-routed) → verify → snapshot → compare. Full recipe: ../know/entries/safe-api-v2.md.
+
+## [2026-11-25] Plan: migrate tik@back env keys to safe api v2 naming
+
+Plan (per ../know/entries/safe-api-v2.md + safe/back/controllers/structuredController.ts,
+which prefixes every derived key: projects PRJ_, hostings HST_, sources SRC_, avatars AVA_):
+
+| old name | new name (v2) | files |
+|---|---|---|
+| PORT | HST_PORT | app.ts:11, back/.env, back/.env.example |
+| API_PREFIX | HST_API_PREFIX | app.ts:29, back/.env.example |
+| AUTH_ENABLED | PRJ_AUTH_ENABLED | app.ts:143, back/.env, back/.env.example |
+| BASE_KEY | PRJ_BASE_KEY | key-client.ts:22, back/.env, back/.env.example |
+| OUTER_EVENTS_BACK_URL | PRJ_OUTER_EVENTS_BACK_URL | outer-events.ts:18, back/.env, back/.env.example |
+| OUTER_EVENTS_PROJECT_ID | PRJ_OUTER_EVENTS_PROJECT_ID | outer-events.ts:19, back/.env, back/.env.example |
+| PROJECT_NAME | PRJ_PROJECT_NAME | outer-events.ts:63, back/.env.example |
+| (kept — serf writes them unprefixed, serf/.github/workflows/deploy_v2.yml:297,299,954) KEY_BACK_URL, PROJECT_ID, NAMESPACE | | |
+
+Then npm run build in back/ (rebuild app.js) and grep-verify no old names left in
+back/src, app.js, .env, .env.example, SPEC.md.
+
+**Result (2026-11-25, applied):** rename table executed. `app.ts` (PORT→HST_PORT,
+API_PREFIX→HST_API_PREFIX, AUTH_ENABLED→PRJ_AUTH_ENABLED), `key-client.ts` (BASE_KEY→PRJ_BASE_KEY
+plus the missing-env message), `outer-events.ts` (OUTER_EVENTS_BACK_URL→PRJ_OUTER_EVENTS_BACK_URL,
+OUTER_EVENTS_PROJECT_ID→PRJ_OUTER_EVENTS_PROJECT_ID, PROJECT_NAME→PRJ_PROJECT_NAME).
+`back/.env` + `back/.env.example` renamed in place (values untouched). SPEC.md §2/§6 updated
+to the new names. Rebuilt `back/app.js` via `npm run build` in back/ (esbuild). Verified:
+`grep -rhoE "process\.env\.[A-Za-z_]+" back/src app.js` → only HST_API_PREFIX, HST_PORT,
+KEY_BACK_URL, NAMESPACE, PRJ_AUTH_ENABLED, PRJ_BASE_KEY, PRJ_OUTER_EVENTS_BACK_URL,
+PRJ_OUTER_EVENTS_PROJECT_ID, PRJ_PROJECT_NAME, PROJECT_ID; old-name scan over
+back/src, app.js, .env, .env.example, SPEC.md → 0 matches.

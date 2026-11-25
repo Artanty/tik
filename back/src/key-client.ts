@@ -1,7 +1,7 @@
 import { dd } from './lib';
 
 /**
- * Exchange this service's BASE_KEY at key@back for a scoped token bound to the
+ * Exchange this service's PRJ_BASE_KEY at key@back for a scoped token bound to the
  * requester->target pair (target validates it via key@back /validate).
  * The requester URL must equal the URL this service is registered under.
  */
@@ -19,7 +19,7 @@ export async function attachApiToken(
   const missingEnvVars: string[] = [];
   if (!process.env.KEY_BACK_URL) missingEnvVars.push('KEY_BACK_URL');
   if (!process.env.PROJECT_ID) missingEnvVars.push('PROJECT_ID');
-  if (!process.env.BASE_KEY) missingEnvVars.push('BASE_KEY');
+  if (!process.env.PRJ_BASE_KEY) missingEnvVars.push('PRJ_BASE_KEY');
   if (missingEnvVars.length) throw new Error(`Missing environment variables: ${missingEnvVars.join(', ')}`);
 
   dd('attachToken START for: ' + targetProject);
@@ -30,7 +30,7 @@ export async function attachApiToken(
         'Content-Type': 'application/json',
         'X-Project-Id': process.env.PROJECT_ID ?? '', // e.g. 'tik@back'
         'X-Project-Domain-Name': requesterUrl,
-        'X-Api-Key': process.env.BASE_KEY ?? '',
+        'X-Api-Key': process.env.PRJ_BASE_KEY ?? '',
       },
       body: JSON.stringify({ targetProject, targetUrl }),
     });

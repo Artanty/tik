@@ -15,8 +15,8 @@ export interface Ctx {
 const OUTER_EVENTS_TIMEOUT_MS = 5000;
 const pendingOuterRequests = new Set<string>();
 
-const outerBackUrl = () => process.env.OUTER_EVENTS_BACK_URL ?? 'http://localhost:3201';
-const outerProjectId = () => process.env.OUTER_EVENTS_PROJECT_ID ?? 'doro@back';
+const outerBackUrl = () => process.env.PRJ_OUTER_EVENTS_BACK_URL ?? 'http://localhost:3201';
+const outerProjectId = () => process.env.PRJ_OUTER_EVENTS_PROJECT_ID ?? 'doro@back';
 const outerKeyPrefix = () => outerProjectId().split('@')[0];
 
 /**
@@ -60,7 +60,7 @@ export async function getEventsState(ctx: Ctx): Promise<unknown> {
       },
       debug: {
         'doro@back': outerData.data.data,
-        [`${process.env.PROJECT_NAME}@${process.env.NAMESPACE}`]: {
+        [`${process.env.PRJ_PROJECT_NAME}@${process.env.NAMESPACE}`]: {
           request: {
             targetProjectId: ctx.body.projectId,
             backendUrlForRequest,

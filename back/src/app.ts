@@ -8,7 +8,7 @@ import { saveTempSave, saveTempCheck } from './storage';
 import { responseLog } from './response-log';
 
 loadEnv();
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.HST_PORT) || 3000;
 
 async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
   backendOrigin.set(getOrigin(req)); // setOrigin middleware parity
@@ -25,8 +25,8 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   }
 
   const url = new URL(req.url ?? '/', 'http://localhost');
-  // all routes live under API_PREFIX (safe row '/tik' in prod; unset = root, local dev)
-  const apiPrefix = (process.env.API_PREFIX ?? '').replace(/\/+$/, '');
+  // all routes live under HST_API_PREFIX (safe row '/tik' in prod; unset = root, local dev)
+  const apiPrefix = (process.env.HST_API_PREFIX ?? '').replace(/\/+$/, '');
   const routePath = apiPrefix
     ? url.pathname === apiPrefix
       ? '/'
@@ -140,7 +140,7 @@ async function authCtx(req: IncomingMessage): Promise<Ctx> {
 }
 
 /** Bearer + x-web-host-url gate; turned off with AUTH_ENABLED=false (temporary dev mode). */
-const authEnabled = (): boolean => process.env.AUTH_ENABLED !== 'false';
+const authEnabled = (): boolean => process.env.PRJ_AUTH_ENABLED !== 'false';
 
 const server = createServer((req, res) => {
   handle(req, res).catch((error) => {

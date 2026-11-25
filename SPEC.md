@@ -19,13 +19,13 @@ Source in `src/`, compiled to `build/`, runs as a systemd service (`npm start`).
 
 | var | required | default | purpose |
 |---|---|---|---|
-| `PORT` | yes (deploy) | 3000 | listen port (local dev 3202; unique per VDS service) |
+| `HST_PORT` | yes (deploy) | 3000 | listen port (local dev 3202; unique per VDS service) |
 | `PROJECT_ID` | yes | — | this service's id in the ecosystem, `tik@back` |
 | `KEY_BACK_URL` | yes | — | key@back broker that mints cross-service tokens |
-| `BASE_KEY` | yes | — | long key issued by key@back `POST /register` for (`PROJECT_ID`, deployed url) |
-| `OUTER_EVENTS_BACK_URL` | no | `http://localhost:3201` | outer events back (was hardcoded in node build) |
-| `OUTER_EVENTS_PROJECT_ID` | no | `doro@back` | its project id (was hardcoded) |
-| `PROJECT_NAME`, `NAMESPACE` | no | — | debug response props only |
+| `PRJ_BASE_KEY` | yes | — | long key issued by key@back `POST /register` for (`PROJECT_ID`, deployed url) |
+| `PRJ_OUTER_EVENTS_BACK_URL` | no | `http://localhost:3201` | outer events back (was hardcoded in node build) |
+| `PRJ_OUTER_EVENTS_PROJECT_ID` | no | `doro@back` | its project id (was hardcoded) |
+| `PRJ_PROJECT_NAME`, `NAMESPACE` | no | — | debug response props only |
 
 ## 3. SSE stream protocol
 
@@ -96,7 +96,7 @@ Frames (all plain `data:` unless noted):
 
 ## 6. Auth — validateUserAccessToken
 
-**Gate toggle:** `AUTH_ENABLED=false` (temporary dev mode, owner 2026-11-19) skips this whole
+**Gate toggle:** `PRJ_AUTH_ENABLED=false` (temporary dev mode, owner 2026-11-19) skips this whole
 section — no Bearer/`x-web-host-url` on `/sse/*` and the events-state routes; the SSE URL
 `:poolId` IS the pool key, and `/collectEventsState` / `/updateEventsState` require
 `poolId` in the body (`400` when missing). Default (`true`/unset) = full gate below.
