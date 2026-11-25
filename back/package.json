@@ -1,6 +1,6 @@
 {
   "name": "tik-back",
-  "version": "1.0.38",
+  "version": "1.0.39",
   "description": "tik back — SSE tick/pool server (standalone rewrite, zero runtime deps)",
   "main": "app.js",
   "scripts": {

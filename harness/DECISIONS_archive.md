@@ -198,3 +198,44 @@ to the new names. Rebuilt `back/app.js` via `npm run build` in back/ (esbuild). 
 KEY_BACK_URL, NAMESPACE, PRJ_AUTH_ENABLED, PRJ_BASE_KEY, PRJ_OUTER_EVENTS_BACK_URL,
 PRJ_OUTER_EVENTS_PROJECT_ID, PRJ_PROJECT_NAME, PROJECT_ID; old-name scan over
 back/src, app.js, .env, .env.example, SPEC.md → 0 matches.
+
+### Progress (done)
+1. `harness/core/` (4): `architecture.md` (back/ layout: app.ts + 10 src files, esbuild → back/app.js),
+   `deploy.md` (VDS target, HST_PORT uniqueness, nginx /tik/, PROXY_BUFFERING, first-deploy dotenv failure),
+   `gotchas.md`, `hard-rules.md` (shared rules + tik specifics).
+2. `harness/features/` (4): `one-timer-design.md` (2026-11-19), `public-routing.md` (2026-11-23),
+   `safe-api-v2.md` (2026-11-23, plan 2026-11-25), `auth-gate-toggle.md` (2026-11-19).
+3. `harness/INDEX.md` — layer map mirroring safe's (core/features/incidents/tasks + DECISIONS links).
+4. `tik/AGENTS.md` — rewritten to adopt safe's `rules:` pointer (shared rules file); tik specifics kept.
+5. Nothing committed (no commit unless asked).
+
+## [2026-11-26] Mirror safe's harness layer: add harness/core + harness/features (2026-11-26)
+
+User: "take a look at how .md files are organized in ../safe project. make the same:
+add harness folder, use shared rules in AGENTS.md, file harness/core and features
+from current DECISIONS files."
+
+### Planned steps
+1. Append this plan to `harness/DECISIONS.md` (AGENTS.md rule: plan before any code action).
+2. `harness/core/` — file tik facts from the current DECISIONS entries:
+   - `architecture.md` — back/ (node+TS standalone rewrite; esbuild → back/app.js),
+     src files, web/, build/ (githooklib), back-node-js/ (read-only reference).
+   - `deploy.md` — VDS target, HST_PORT uniqueness, nginx /tik route, PROXY_BUFFERING,
+     first-deploy dotenv failure.
+   - `gotchas.md` — slave dotenv, serf ExecStart, storage/logs anchoring, AUTH_ENABLED toggle.
+   - `hard-rules.md` — shared rules + tik specifics (no commit unless asked, no `-d`,
+     spec-first, read-only back-node-js).
+3. `harness/features/` — file tik's DECISIONS entries as feature docs:
+   `one-timer-design.md`, `public-routing.md`, `safe-api-v2.md`, `auth-gate-toggle.md`.
+4. `harness/INDEX.md` — layer map mirroring safe's (core/features/incidents/tasks +
+   DECISIONS.md links; incidents/tasks stay empty — will be added when they have content).
+5. `tik/AGENTS.md` — adopt safe's `rules:` pointer (`/Users/artyomantoshkin/server/know/entries/rules.md`)
+   + keep tik specifics (spec-first, deploy context, HST_PORT).
+6. Write Progress (done) into `harness/DECISIONS.md`; check the ~250-line rotation rule;
+   rotate older entries into `harness/DECISIONS_archive.md` + flag if over.
+7. Verify: `ls harness/`, line counts of new files, AGENTS.md reads back. Nothing committed.
+
+# DECISIONS_archive — tik back rewrite
+
+History moved here when `harness/DECISIONS.md` grows past the ~250-line convention.
+The live session log is `harness/DECISIONS.md` (read it first; per AGENTS.md).
