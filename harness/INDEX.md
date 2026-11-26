@@ -20,6 +20,7 @@ Layers (load only what a task needs):
 - `public-routing.md` — nginx /tik route, PROXY_BUFFERING, firewall notes.
 - `safe-api-v2.md` — v2 naming, migration checklist (HST_*, PRJ_*).
 - `auth-gate-toggle.md` — the temporary AUTH_ENABLED=false local toggle.
+- `feature-slots.md` — back feature slots (loader v3, no residents yet; tik: node:http host + FeatRes adapter).
 
 ## Cross-project
 Shared rules (DECISIONS workflow, git/commits, naming):

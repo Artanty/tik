@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'http';
+import { join } from 'path';
 import { loadEnv } from './env';
 import { HttpError, backendOrigin, corsHeaders, dd, getOrigin, readJsonBody, sendJson } from './lib';
 import { poolManager } from './pool-manager';
@@ -9,6 +10,42 @@ import { responseLog } from './response-log';
 
 loadEnv();
 const PORT = Number(process.env.HST_PORT) || 3000;
+
+/** backend-slots (vendored loader, back/features/loader.js): WHO fills a slot is
+ * env config (FEAT_*_SLOT rows), WHERE slots sit is host code (here: featRoutes). */
+type FeatRouteHandler = (req: IncomingMessage, res: any) => void;
+const featRoutes = new Map<string, FeatRouteHandler>();
+const featHost = {
+  get: (p: string, h: FeatRouteHandler) => { featRoutes.set(`GET ${p}`, h); },
+  post: (p: string, h: FeatRouteHandler) => { featRoutes.set(`POST ${p}`, h); },
+  put: (p: string, h: FeatRouteHandler) => { featRoutes.set(`PUT ${p}`, h); },
+  patch: (p: string, h: FeatRouteHandler) => { featRoutes.set(`PATCH ${p}`, h); },
+  delete: (p: string, h: FeatRouteHandler) => { featRoutes.set(`DELETE ${p}`, h); },
+  all: (p: string, h: FeatRouteHandler) => { featRoutes.set(`ALL ${p}`, h); },
+};
+
+/** Express-shaped response adapter — loader handlers are written against Express
+ * res (status/set/json); tik hosts on raw node:http. */
+class FeatRes {
+  private res: ServerResponse;
+  constructor(res: ServerResponse) { this.res = res; }
+  status(code: number) { this.res.statusCode = code; return this; }
+  set(name: string, value?: string) { this.res.setHeader(name, value as string); return this; }
+  json(body: unknown) {
+    this.res.setHeader('Content-Type', 'application/json');
+    this.res.end(JSON.stringify(body));
+    return this;
+  }
+}
+
+// Mount FEAT_-configured backend features (vendored loader). The loader is ESM;
+// tik back is CJS → esbuild inlines it, so vendoredDir is passed explicitly.
+// Failures are logged by the loader itself (silent-fail per feature, spec) —
+// they never break the host boot.
+void import('../features/loader.js')
+  .then((mod) => mod.mountBackendFeatures(featHost, { vendoredDir: join(__dirname, 'features') }))
+  .then((ids) => { if (ids.length > 0) dd(`backend-slots: mounted features: ${ids.join(', ')}`); })
+  .catch((e: Error) => dd(`backend-slots: loader unavailable, features stay dormant: ${e?.message ?? e}`));
 
 async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
   backendOrigin.set(getOrigin(req)); // setOrigin middleware parity
@@ -40,6 +77,15 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   }
   const parts = routePath.split('/').filter(Boolean);
   const [a, b, c] = parts;
+
+  // FEAT_-configured routes (backend-slots v3): dispatch registrations from the loader.
+  if (routePath !== null) {
+    const feat = featRoutes.get(`${req.method} ${routePath}`);
+    if (feat) {
+      feat(req, new FeatRes(res));
+      return;
+    }
+  }
 
   // SSE stream (SPEC §3). AUTH_ENABLED=false (dev gate-off): no token lookup,
   // the URL :poolId IS the pool key. Ban gate always applies.
