@@ -1,8 +1,8 @@
-// VENDORED from feat/back/features/loader/v3/js-node/loader.d.ts (spec: feat/back/spec/backend-slots.md).
-// js-node namespace, v3: named slots. FEAT_<ID>_SLOT=<slotName> is the required toggle;
-// _MOUNT is an optional route-path override (`true` = the feature's defaultMount).
-// Features export kind route/middleware (or legacy attach()). Not-vendored features
-// resolve from the FEAT_URL feat host.
+/** Contract: back/spec/backend-slots.md (js-node namespace, v4: named slots + pins).
+ * FEAT_<ID>_SLOT=<slotName> is the required toggle; _VERSION pins vN|latest (default
+ * latest); _MOUNT is an optional route-path override (`true` = the feature's
+ * defaultMount). Required envs from the feat host's /catalog.json are validated before
+ * mounting. Not-vendored features resolve from the FEAT_URL feat host. */
 
 export interface MountOptions {
   /** override process.env (tests) */
@@ -13,6 +13,8 @@ export interface MountOptions {
   featUrl?: string;
   /** inject fetch for tests (default: global fetch) */
   fetchImpl?: typeof fetch;
+  /** override the loader's platform namespace (default: 'js-node') — tests only */
+  namespace?: string;
 }
 
 export interface FeatLoader {
