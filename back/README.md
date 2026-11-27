@@ -5,6 +5,7 @@ Deployed on the VDS (188.225.26.46) via the serf pipeline (VDS slim variant), in
 port **3202**, public URL **`http://188.225.26.46/tik/…`** (port 80 via nginx).
 
 
+
 ## nginx: route setup on the server
 
 **The deploy pipeline now does this automatically** (serf, since 2026-11-23): every VDS
